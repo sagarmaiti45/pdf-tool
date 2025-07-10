@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir:*)",
+      "Bash(chmod:*)",
+      "Bash(ls:*)",
+      "Bash(brew install:*)",
+      "Bash(gs:*)",
+      "Bash(convert:*)",
+      "Bash(grep:*)",
+      "Bash(php -l:*)",
+      "Bash(rm:*)",
+      "Bash(/opt/homebrew/bin/magick -list configure)",
+      "Bash(touch:*)"
+    ],
+    "deny": []
+  }
+}

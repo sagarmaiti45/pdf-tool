@@ -1,0 +1,52 @@
+%!PS
+% PostScript wrapper to force PDF to A4 size with centered content
+
+% Set A4 page size
+<< /PageSize [595 842] >> setpagedevice
+
+% Define the scaling and centering procedure
+/centerandscale {
+    % Save the current graphics state
+    gsave
+    
+    % Get the page dimensions
+    currentpagedevice /PageSize get aload pop
+    /pageheight exch def
+    /pagewidth exch def
+    
+    % Get the bounding box of the content
+    clippath pathbbox
+    /ury exch def
+    /urx exch def
+    /lly exch def
+    /llx exch def
+    
+    % Calculate content dimensions
+    /contentwidth urx llx sub def
+    /contentheight ury lly sub def
+    
+    % Calculate scale factors
+    pagewidth contentwidth div
+    pageheight contentheight div
+    2 copy lt { exch } if pop  % Use the smaller scale factor
+    0.95 mul  % Scale down to 95% to ensure margins
+    /scale exch def
+    
+    % Calculate centering offsets
+    pagewidth contentwidth scale mul sub 2 div
+    pageheight contentheight scale mul sub 2 div
+    
+    % Apply transformations
+    translate
+    scale scale scale
+    llx neg lly neg translate
+    
+} def
+
+% Install the procedure for each page
+<<
+    /BeginPage {
+        pop
+        centerandscale
+    }
+>> setpagedevice

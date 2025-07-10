@@ -1,0 +1,11 @@
+.git
+.gitignore
+.DS_Store
+*.log
+/logs/*
+/temp/*
+/uploads/*
+README.md
+Dockerfile
+.dockerignore
+docker-compose.yml

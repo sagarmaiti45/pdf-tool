@@ -1,0 +1,24 @@
+# Temporary files
+/uploads/*
+/temp/*
+/logs/*
+!uploads/.gitkeep
+!temp/.gitkeep
+!logs/.gitkeep
+
+# System files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+
+# Environment files
+.env
+config.local.php
+
+# Keep directories but not contents
+*.log
+*.tmp
+*.temp
