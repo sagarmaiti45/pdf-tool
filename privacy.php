@@ -1,35 +1,12 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Privacy Policy - Triniva</title>
-    <meta name="description" content="Privacy Policy for Triniva. Learn how we protect your data and maintain your privacy while using our PDF conversion tools.">
-    <link rel="stylesheet" href="assets/css/style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-</head>
-<body>
-    <header>
-        <div class="container">
-            <nav class="navbar">
-                <div class="logo">
-                    <a href="index.php" style="text-decoration: none; color: inherit;">
-                        <i class="fas fa-file-pdf"></i>
-                        <span>Triniva</span>
-                    </a>
-                </div>
-                <ul class="nav-links" id="navLinks">
-                    <li><a href="index.php">Home</a></li>
-                    <li><a href="index.php#tools">All Tools</a></li>
-                    <li><a href="index.php#about">About</a></li>
-                    <li><a href="contact.php">Contact</a></li>
-                </ul>
-                <button class="mobile-menu-toggle" id="mobileMenuToggle">
-                    <i class="fas fa-bars"></i>
-                </button>
-            </nav>
-        </div>
-    </header>
+<?php
+// Page variables
+$page_title = 'Privacy Policy';
+$page_description = 'Privacy Policy for Triniva. Learn how we protect your data and maintain your privacy while using our PDF conversion tools.';
+$page_keywords = 'privacy policy, data protection, PDF tools privacy, Triniva privacy';
+
+// Include header
+require_once 'includes/header.php';
+?>
 
     <div class="legal-content">
         <h1>Privacy Policy</h1>
@@ -124,7 +101,6 @@
         <p>If you have any questions about this Privacy Policy or our privacy practices, please contact us:</p>
         <ul>
             <li><strong>Email:</strong> info@freshyportal.com</li>
-            <li><strong>Phone:</strong> +91 8101725801</li>
             <li><strong>Address:</strong> East Medinipur, West Bengal, India - 721151</li>
             <li><strong>Contact Form:</strong> <a href="contact.php">Contact Us</a></li>
         </ul>
@@ -157,35 +133,7 @@
         </ul>
     </div>
 
-    <footer>
-        <div class="container">
-            <div class="footer-content">
-                <div class="footer-section">
-                    <h3>Triniva</h3>
-                    <p>Professional PDF tools that are fast, secure, and completely free.</p>
-                </div>
-                <div class="footer-section">
-                    <h4>Quick Links</h4>
-                    <ul>
-                        <li><a href="index.php">Home</a></li>
-                        <li><a href="index.php#tools">All Tools</a></li>
-                        <li><a href="contact.php">Contact</a></li>
-                    </ul>
-                </div>
-                <div class="footer-section">
-                    <h4>Legal</h4>
-                    <ul>
-                        <li><a href="privacy.php">Privacy Policy</a></li>
-                        <li><a href="terms.php">Terms & Conditions</a></li>
-                    </ul>
-                </div>
-            </div>
-            <div class="footer-bottom">
-                <p>&copy; 2024 Triniva. All rights reserved. A <a href="https://freshyportal.com" target="_blank" style="color: #fff; text-decoration: underline;">FreshyPortal</a> Product.</p>
-            </div>
-        </div>
-    </footer>
-
-    <script src="assets/js/main.js"></script>
-</body>
-</html>
+<?php
+// Include footer
+require_once 'includes/footer.php';
+?>

@@ -1,5 +1,11 @@
 <?php
 require_once 'includes/functions.php';
+require_once 'includes/config.php';
+
+// Set page variables for header
+$page_title = 'Contact Us';
+$page_description = 'Get in touch with Triniva. We\'re here to help with any questions about our PDF conversion and editing tools.';
+$page_keywords = 'contact, support, help, PDF tools, Triniva';
 
 $error = '';
 $success = '';
@@ -95,129 +101,100 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $csrfToken = generateCSRFToken();
+
+// Include header
+require_once 'includes/header.php';
 ?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Contact Us - Triniva</title>
-    <meta name="description" content="Get in touch with Triniva. We're here to help with any questions about our PDF conversion and editing tools.">
-    <link rel="stylesheet" href="assets/css/style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-</head>
-<body>
-    <header>
-        <div class="container">
-            <nav class="navbar">
-                <div class="logo">
-                    <a href="index.php" style="text-decoration: none; color: inherit;">
-                        <i class="fas fa-file-pdf"></i>
-                        <span>Triniva</span>
-                    </a>
-                </div>
-                <ul class="nav-links" id="navLinks">
-                    <li><a href="index.php">Home</a></li>
-                    <li><a href="index.php#tools">All Tools</a></li>
-                    <li><a href="index.php#about">About</a></li>
-                    <li><a href="contact.php" class="active">Contact</a></li>
-                </ul>
-                <button class="mobile-menu-toggle" id="mobileMenuToggle">
-                    <i class="fas fa-bars"></i>
-                </button>
-            </nav>
-        </div>
-    </header>
 
-    <div class="page-header">
+    <main class="main-content">
         <div class="container">
-            <h1>Contact Us</h1>
-            <p>We're here to help with any questions or feedback</p>
-        </div>
-    </div>
+            <div class="text-center mb-8">
+                <h1 class="text-4xl font-bold mb-4">Contact Us</h1>
+                <p class="text-gray-600">We're here to help with any questions or feedback</p>
+            </div>
 
-    <section class="contact-section">
-        <div class="container">
-            <div class="contact-grid">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 <div class="contact-info">
-                    <h2>Get in Touch</h2>
-                    <p>Have questions about our PDF tools? Need help with a specific feature? We're here to assist you.</p>
+                    <h2 class="text-2xl font-semibold mb-4">Get in Touch</h2>
+                    <p class="text-gray-600 mb-6">Have questions about our PDF tools? Need help with a specific feature? We're here to assist you.</p>
                     
-                    <div class="contact-details">
-                        <div class="contact-item">
-                            <i class="fas fa-envelope"></i>
+                    <div class="space-y-6">
+                        <div class="flex items-start gap-4">
+                            <div class="flex-shrink-0">
+                                <i class="fas fa-envelope text-primary text-xl"></i>
+                            </div>
                             <div>
-                                <h3>Email</h3>
-                                <p>info@freshyportal.com</p>
+                                <h3 class="font-semibold mb-1">Email</h3>
+                                <p class="text-gray-600">info@freshyportal.com</p>
                             </div>
                         </div>
                         
-                        <div class="contact-item">
-                            <i class="fas fa-clock"></i>
+                        <div class="flex items-start gap-4">
+                            <div class="flex-shrink-0">
+                                <i class="fas fa-clock text-primary text-xl"></i>
+                            </div>
                             <div>
-                                <h3>Response Time</h3>
-                                <p>24-48 hours (Mon-Fri)</p>
+                                <h3 class="font-semibold mb-1">Response Time</h3>
+                                <p class="text-gray-600">24-48 hours (Mon-Fri)</p>
                             </div>
                         </div>
                         
-                        <div class="contact-item">
-                            <i class="fas fa-phone"></i>
+                        <div class="flex items-start gap-4">
+                            <div class="flex-shrink-0">
+                                <i class="fas fa-map-marker-alt text-primary text-xl"></i>
+                            </div>
                             <div>
-                                <h3>Phone</h3>
-                                <p>+91 8101725801</p>
+                                <h3 class="font-semibold mb-1">Address</h3>
+                                <p class="text-gray-600">East Medinipur, West Bengal<br>India - 721151</p>
                             </div>
                         </div>
                         
-                        <div class="contact-item">
-                            <i class="fas fa-map-marker-alt"></i>
-                            <div>
-                                <h3>Address</h3>
-                                <p>East Medinipur, West Bengal<br>India - 721151</p>
+                        <div class="flex items-start gap-4">
+                            <div class="flex-shrink-0">
+                                <i class="fas fa-shield-alt text-primary text-xl"></i>
                             </div>
-                        </div>
-                        
-                        <div class="contact-item">
-                            <i class="fas fa-shield-alt"></i>
                             <div>
-                                <h3>Privacy</h3>
-                                <p>Your data is secure and never shared</p>
+                                <h3 class="font-semibold mb-1">Privacy</h3>
+                                <p class="text-gray-600">Your data is secure and never shared</p>
                             </div>
                         </div>
                     </div>
                     
-                    <div class="faq-section">
-                        <h3>Frequently Asked Questions</h3>
-                        <div class="faq-item">
-                            <h4>Is Triniva really free?</h4>
-                            <p>Yes! All our tools are 100% free to use with no hidden charges.</p>
-                        </div>
-                        <div class="faq-item">
-                            <h4>Are my files secure?</h4>
-                            <p>Absolutely. Files are automatically deleted after processing and we never access your content.</p>
-                        </div>
-                        <div class="faq-item">
-                            <h4>What's the file size limit?</h4>
-                            <p>You can upload files up to 50MB. For larger files, try compressing them first.</p>
+                    <div class="mt-8">
+                        <h3 class="text-xl font-semibold mb-4">Frequently Asked Questions</h3>
+                        <div class="space-y-4">
+                            <div class="border-l-4 border-primary pl-4">
+                                <h4 class="font-semibold mb-1">Is Triniva really free?</h4>
+                                <p class="text-gray-600">Yes! All our tools are 100% free to use with no hidden charges.</p>
+                            </div>
+                            <div class="border-l-4 border-primary pl-4">
+                                <h4 class="font-semibold mb-1">Are my files secure?</h4>
+                                <p class="text-gray-600">Absolutely. Files are automatically deleted after processing and we never access your content.</p>
+                            </div>
+                            <div class="border-l-4 border-primary pl-4">
+                                <h4 class="font-semibold mb-1">What's the file size limit?</h4>
+                                <p class="text-gray-600">You can upload files up to 50MB. For larger files, try compressing them first.</p>
+                            </div>
                         </div>
                     </div>
                 </div>
                 
-                <div class="contact-form-container">
-                    <h2>Send us a Message</h2>
+                <div class="bg-white rounded-lg shadow-lg p-6">
+                    <h2 class="text-2xl font-semibold mb-6">Send us a Message</h2>
                     
                     <?php if ($error): ?>
-                        <div class="alert alert-error">
-                            <i class="fas fa-exclamation-circle"></i> <?php echo htmlspecialchars($error); ?>
+                        <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
+                            <i class="fas fa-exclamation-circle mr-2"></i><?php echo htmlspecialchars($error); ?>
                         </div>
                     <?php endif; ?>
 
                     <?php if ($success): ?>
-                        <div class="alert alert-success">
-                            <i class="fas fa-check-circle"></i> <?php echo htmlspecialchars($success); ?>
+                        <div class="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg mb-4">
+                            <i class="fas fa-check-circle mr-2"></i><?php echo htmlspecialchars($success); ?>
                         </div>
                     <?php endif; ?>
                     
-                    <form method="POST" class="contact-form" id="contactForm">
+                    <form method="POST" id="contactForm" class="space-y-4">
                         <input type="hidden" name="csrf_token" value="<?php echo $csrfToken; ?>">
                         
                         <!-- Honeypot field for bot detection -->
@@ -225,127 +202,101 @@ $csrfToken = generateCSRFToken();
                             <input type="text" name="website" tabindex="-1" autocomplete="off">
                         </div>
                         
-                        <div class="form-group">
-                            <label class="form-label" for="name">Your Name *</label>
+                        <div>
+                            <label for="name" class="block text-sm font-medium text-gray-700 mb-1">Your Name *</label>
                             <input type="text" 
                                    name="name" 
                                    id="name" 
-                                   class="form-control" 
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" 
                                    required 
                                    minlength="2"
                                    value="<?php echo htmlspecialchars($_POST['name'] ?? ''); ?>">
                         </div>
                         
-                        <div class="form-group">
-                            <label class="form-label" for="email">Email Address *</label>
+                        <div>
+                            <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email Address *</label>
                             <input type="email" 
                                    name="email" 
                                    id="email" 
-                                   class="form-control" 
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" 
                                    required
                                    value="<?php echo htmlspecialchars($_POST['email'] ?? ''); ?>">
                         </div>
                         
-                        <div class="form-group">
-                            <label class="form-label" for="subject">Subject *</label>
+                        <div>
+                            <label for="subject" class="block text-sm font-medium text-gray-700 mb-1">Subject *</label>
                             <input type="text" 
                                    name="subject" 
                                    id="subject" 
-                                   class="form-control" 
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" 
                                    required 
                                    minlength="5"
                                    value="<?php echo htmlspecialchars($_POST['subject'] ?? ''); ?>">
                         </div>
                         
-                        <div class="form-group">
-                            <label class="form-label" for="message">Message *</label>
+                        <div>
+                            <label for="message" class="block text-sm font-medium text-gray-700 mb-1">Message *</label>
                             <textarea name="message" 
                                       id="message" 
-                                      class="form-control" 
+                                      class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" 
                                       rows="6" 
                                       required 
                                       minlength="20"><?php echo htmlspecialchars($_POST['message'] ?? ''); ?></textarea>
                         </div>
                         
-                        <div class="form-group">
-                            <button type="submit" class="btn btn-primary" style="width: 100%;">
-                                <i class="fas fa-paper-plane"></i> Send Message
-                            </button>
-                        </div>
+                        <button type="submit" class="w-full btn btn-primary">
+                            <i class="fas fa-paper-plane mr-2"></i>Send Message
+                        </button>
                         
-                        <p style="font-size: 0.875rem; color: #757575; text-align: center;">
+                        <p class="text-sm text-gray-600 text-center">
                             By submitting this form, you agree to our 
-                            <a href="privacy.php" style="color: var(--primary-color);">Privacy Policy</a> and 
-                            <a href="terms.php" style="color: var(--primary-color);">Terms of Service</a>.
+                            <a href="privacy.php" class="text-primary hover:underline">Privacy Policy</a> and 
+                            <a href="terms.php" class="text-primary hover:underline">Terms of Service</a>.
                         </p>
                     </form>
                 </div>
             </div>
         </div>
-    </section>
+    </main>
 
-    <footer>
-        <div class="container">
-            <div class="footer-content">
-                <div class="footer-section">
-                    <h3>Triniva</h3>
-                    <p>Professional PDF tools that are fast, secure, and completely free.</p>
-                </div>
-                <div class="footer-section">
-                    <h4>Quick Links</h4>
-                    <ul>
-                        <li><a href="index.php">Home</a></li>
-                        <li><a href="index.php#tools">All Tools</a></li>
-                        <li><a href="contact.php">Contact</a></li>
-                    </ul>
-                </div>
-                <div class="footer-section">
-                    <h4>Legal</h4>
-                    <ul>
-                        <li><a href="privacy.php">Privacy Policy</a></li>
-                        <li><a href="terms.php">Terms & Conditions</a></li>
-                    </ul>
-                </div>
-            </div>
-            <div class="footer-bottom">
-                <p>&copy; 2024 Triniva. All rights reserved. A <a href="https://freshyportal.com" target="_blank" style="color: #fff; text-decoration: underline;">FreshyPortal</a> Product.</p>
-            </div>
-        </div>
-    </footer>
+<?php
+// Additional scripts for this page
+$additional_scripts = <<<EOT
+<script>
+    // Form validation
+    document.getElementById('contactForm').addEventListener('submit', function(e) {
+        const name = document.getElementById('name').value.trim();
+        const email = document.getElementById('email').value.trim();
+        const subject = document.getElementById('subject').value.trim();
+        const message = document.getElementById('message').value.trim();
+        
+        if (name.length < 2) {
+            e.preventDefault();
+            alert('Please enter a valid name (at least 2 characters).');
+            return;
+        }
+        
+        if (!email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
+            e.preventDefault();
+            alert('Please enter a valid email address.');
+            return;
+        }
+        
+        if (subject.length < 5) {
+            e.preventDefault();
+            alert('Please enter a subject (at least 5 characters).');
+            return;
+        }
+        
+        if (message.length < 20) {
+            e.preventDefault();
+            alert('Please enter a message (at least 20 characters).');
+            return;
+        }
+    });
+</script>
+EOT;
 
-    <script src="assets/js/main.js"></script>
-    <script>
-        // Form validation
-        document.getElementById('contactForm').addEventListener('submit', function(e) {
-            const name = document.getElementById('name').value.trim();
-            const email = document.getElementById('email').value.trim();
-            const subject = document.getElementById('subject').value.trim();
-            const message = document.getElementById('message').value.trim();
-            
-            if (name.length < 2) {
-                e.preventDefault();
-                alert('Please enter a valid name (at least 2 characters).');
-                return;
-            }
-            
-            if (!email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
-                e.preventDefault();
-                alert('Please enter a valid email address.');
-                return;
-            }
-            
-            if (subject.length < 5) {
-                e.preventDefault();
-                alert('Please enter a subject (at least 5 characters).');
-                return;
-            }
-            
-            if (message.length < 20) {
-                e.preventDefault();
-                alert('Please enter a message (at least 20 characters).');
-                return;
-            }
-        });
-    </script>
-</body>
-</html>
+// Include footer
+require_once 'includes/footer.php';
+?>

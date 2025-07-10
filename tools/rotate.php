@@ -1,6 +1,149 @@
 <?php
 require_once '../includes/functions.php';
 
+// Page variables for header
+$page_title = 'Rotate PDF - Change Page Orientation';
+$page_description = 'Rotate PDF pages online. Rotate all pages or specific pages by 90, 180, or 270 degrees. Free PDF rotation tool.';
+$page_keywords = 'rotate PDF, PDF rotation, turn PDF pages, flip PDF, rotate PDF online, PDF orientation';
+
+// Additional head content
+$additional_head = '<style>
+        .rotation-options {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin: 1.5rem 0;
+        }
+        
+        .rotation-option {
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 1.5rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .rotation-option:hover {
+            border-color: var(--primary-color);
+            background: var(--primary-light);
+        }
+        
+        .rotation-option.selected {
+            border-color: var(--primary-color);
+            background: var(--primary-light);
+        }
+        
+        .rotation-option input[type="radio"] {
+            display: none;
+        }
+        
+        .rotation-icon {
+            font-size: 3rem;
+            color: var(--primary-color);
+            margin-bottom: 0.5rem;
+        }
+        
+        .page-selection {
+            margin: 1.5rem 0;
+            padding: 1rem;
+            background: var(--bg-light);
+            border-radius: 8px;
+        }
+    </style>';
+
+// JavaScript to be included
+$additional_scripts = '<script>
+        const uploadArea = document.getElementById(\'uploadArea\');
+        const fileInput = document.getElementById(\'pdfFile\');
+        const fileInfo = document.getElementById(\'fileInfo\');
+        const fileName = document.getElementById(\'fileName\');
+        const fileSize = document.getElementById(\'fileSize\');
+        const removeFile = document.getElementById(\'removeFile\');
+        const rotateBtn = document.getElementById(\'rotateBtn\');
+        const rotateForm = document.getElementById(\'rotateForm\');
+        const loader = document.getElementById(\'loader\');
+        const rotationOptions = document.getElementById(\'rotationOptions\');
+        const customPages = document.getElementById(\'customPages\');
+
+        uploadArea.addEventListener(\'click\', () => fileInput.click());
+
+        uploadArea.addEventListener(\'dragover\', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add(\'dragover\');
+        });
+
+        uploadArea.addEventListener(\'dragleave\', () => {
+            uploadArea.classList.remove(\'dragover\');
+        });
+
+        uploadArea.addEventListener(\'drop\', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove(\'dragover\');
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0 && files[0].type === \'application/pdf\') {
+                fileInput.files = files;
+                handleFileSelect();
+            }
+        });
+
+        fileInput.addEventListener(\'change\', handleFileSelect);
+
+        removeFile.addEventListener(\'click\', () => {
+            fileInput.value = \'\';
+            fileInfo.style.display = \'none\';
+            uploadArea.style.display = \'block\';
+            rotationOptions.style.display = \'none\';
+            rotateBtn.disabled = true;
+        });
+
+        function handleFileSelect() {
+            const file = fileInput.files[0];
+            if (file) {
+                fileName.textContent = file.name;
+                fileSize.textContent = formatFileSize(file.size);
+                fileInfo.style.display = \'block\';
+                uploadArea.style.display = \'none\';
+                rotationOptions.style.display = \'block\';
+                rotateBtn.disabled = false;
+            }
+        }
+
+        function formatFileSize(bytes) {
+            const units = [\'B\', \'KB\', \'MB\', \'GB\'];
+            let i = 0;
+            while (bytes >= 1024 && i < units.length - 1) {
+                bytes /= 1024;
+                i++;
+            }
+            return bytes.toFixed(2) + \' \' + units[i];
+        }
+
+        // Handle rotation option selection
+        document.querySelectorAll(\'.rotation-option\').forEach(option => {
+            option.addEventListener(\'click\', function() {
+                document.querySelectorAll(\'.rotation-option\').forEach(o => o.classList.remove(\'selected\'));
+                this.classList.add(\'selected\');
+            });
+        });
+
+        // Handle page selection
+        document.querySelectorAll(\'input[name="pages"]\').forEach(radio => {
+            radio.addEventListener(\'change\', function() {
+                customPages.style.display = this.value === \'custom\' ? \'block\' : \'none\';
+            });
+        });
+
+        // Set initial selected rotation option
+        document.querySelector(\'.rotation-option\').classList.add(\'selected\');
+
+        rotateForm.addEventListener(\'submit\', (e) => {
+            rotateBtn.disabled = true;
+            loader.style.display = \'block\';
+        });
+    </script>';
+
 $error = '';
 $success = '';
 $downloadLink = '';
@@ -103,80 +246,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $csrfToken = generateCSRFToken();
+
+// Include header
+require_once '../includes/header.php';
 ?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rotate PDF - Triniva</title>
-    <link rel="stylesheet" href="../assets/css/style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <style>
-        .rotation-options {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 1rem;
-            margin: 1.5rem 0;
-        }
-        
-        .rotation-option {
-            border: 2px solid #e0e0e0;
-            border-radius: 8px;
-            padding: 1.5rem;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-        
-        .rotation-option:hover {
-            border-color: var(--primary-color);
-            background: var(--primary-light);
-        }
-        
-        .rotation-option.selected {
-            border-color: var(--primary-color);
-            background: var(--primary-light);
-        }
-        
-        .rotation-option input[type="radio"] {
-            display: none;
-        }
-        
-        .rotation-icon {
-            font-size: 3rem;
-            color: var(--primary-color);
-            margin-bottom: 0.5rem;
-        }
-        
-        .page-selection {
-            margin: 1.5rem 0;
-            padding: 1rem;
-            background: var(--bg-light);
-            border-radius: 8px;
-        }
-    </style>
-</head>
-<body>
-    <header>
-        <div class="container">
-            <nav class="navbar">
-                <div class="logo">
-                    <a href="../index.php" style="text-decoration: none; color: inherit;">
-                        <i class="fas fa-file-pdf"></i>
-                        <span>Triniva</span>
-                    </a>
-                </div>
-                <ul class="nav-links" id="navLinks">
-                    <li><a href="../index.php">Home</a></li>
-                    <li><a href="../index.php#tools">All Tools</a></li>
-                </ul>
-                <button class="mobile-menu-toggle" id="mobileMenuToggle">
-                    <i class="fas fa-bars"></i>
-                </button>
-            </nav>
-        </div>
-    </header>
 
     <div class="tool-page">
         <div class="container">
@@ -304,102 +377,7 @@ $csrfToken = generateCSRFToken();
         </div>
     </div>
 
-    <footer>
-        <div class="container">
-            <p>&copy; 2024 Triniva. All rights reserved. A <a href="https://freshyportal.com" target="_blank" style="color: #fff; text-decoration: underline;">FreshyPortal</a> Product.</p>
-        </div>
-    </footer>
-
-    <script>
-        const uploadArea = document.getElementById('uploadArea');
-        const fileInput = document.getElementById('pdfFile');
-        const fileInfo = document.getElementById('fileInfo');
-        const fileName = document.getElementById('fileName');
-        const fileSize = document.getElementById('fileSize');
-        const removeFile = document.getElementById('removeFile');
-        const rotateBtn = document.getElementById('rotateBtn');
-        const rotateForm = document.getElementById('rotateForm');
-        const loader = document.getElementById('loader');
-        const rotationOptions = document.getElementById('rotationOptions');
-        const customPages = document.getElementById('customPages');
-
-        uploadArea.addEventListener('click', () => fileInput.click());
-
-        uploadArea.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            uploadArea.classList.add('dragover');
-        });
-
-        uploadArea.addEventListener('dragleave', () => {
-            uploadArea.classList.remove('dragover');
-        });
-
-        uploadArea.addEventListener('drop', (e) => {
-            e.preventDefault();
-            uploadArea.classList.remove('dragover');
-            
-            const files = e.dataTransfer.files;
-            if (files.length > 0 && files[0].type === 'application/pdf') {
-                fileInput.files = files;
-                handleFileSelect();
-            }
-        });
-
-        fileInput.addEventListener('change', handleFileSelect);
-
-        removeFile.addEventListener('click', () => {
-            fileInput.value = '';
-            fileInfo.style.display = 'none';
-            uploadArea.style.display = 'block';
-            rotationOptions.style.display = 'none';
-            rotateBtn.disabled = true;
-        });
-
-        function handleFileSelect() {
-            const file = fileInput.files[0];
-            if (file) {
-                fileName.textContent = file.name;
-                fileSize.textContent = formatFileSize(file.size);
-                fileInfo.style.display = 'block';
-                uploadArea.style.display = 'none';
-                rotationOptions.style.display = 'block';
-                rotateBtn.disabled = false;
-            }
-        }
-
-        function formatFileSize(bytes) {
-            const units = ['B', 'KB', 'MB', 'GB'];
-            let i = 0;
-            while (bytes >= 1024 && i < units.length - 1) {
-                bytes /= 1024;
-                i++;
-            }
-            return bytes.toFixed(2) + ' ' + units[i];
-        }
-
-        // Handle rotation option selection
-        document.querySelectorAll('.rotation-option').forEach(option => {
-            option.addEventListener('click', function() {
-                document.querySelectorAll('.rotation-option').forEach(o => o.classList.remove('selected'));
-                this.classList.add('selected');
-            });
-        });
-
-        // Handle page selection
-        document.querySelectorAll('input[name="pages"]').forEach(radio => {
-            radio.addEventListener('change', function() {
-                customPages.style.display = this.value === 'custom' ? 'block' : 'none';
-            });
-        });
-
-        // Set initial selected rotation option
-        document.querySelector('.rotation-option').classList.add('selected');
-
-        rotateForm.addEventListener('submit', (e) => {
-            rotateBtn.disabled = true;
-            loader.style.display = 'block';
-        });
-    </script>
-    <script src="../assets/js/main.js"></script>
-</body>
-</html>
+<?php
+// Include footer
+require_once '../includes/footer.php';
+?>

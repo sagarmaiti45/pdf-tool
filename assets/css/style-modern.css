@@ -835,48 +835,6 @@ textarea.form-control {
     margin-bottom: var(--space-8);
 }
 
-/* About Section */
-.about-section {
-    padding: var(--space-16) 0;
-}
-
-.about-section .container {
-    max-width: 1000px;
-}
-
-/* Stats Grid */
-.stats-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: var(--space-6);
-    margin: var(--space-12) 0;
-}
-
-.stat-card {
-    background: var(--surface);
-    padding: var(--space-6);
-    text-align: center;
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow);
-}
-
-.stat-card i {
-    font-size: var(--text-3xl);
-    color: var(--primary-color);
-    margin-bottom: var(--space-3);
-}
-
-.stat-card h3 {
-    font-size: var(--text-2xl);
-    font-weight: 700;
-    margin-bottom: var(--space-2);
-}
-
-.stat-card p {
-    color: var(--text-muted);
-    font-size: var(--text-sm);
-}
-
 /* Tool Pages */
 .tool-content {
     max-width: 800px;

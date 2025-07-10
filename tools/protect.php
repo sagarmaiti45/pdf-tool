@@ -1,6 +1,232 @@
 <?php
 require_once '../includes/functions.php';
 
+// Page variables for header
+$page_title = 'Protect PDF - Add Password Protection';
+$page_description = 'Password protect your PDF files online. Add security and permissions to prevent unauthorized access, copying, or editing.';
+$page_keywords = 'protect PDF, password protect PDF, secure PDF, PDF encryption, PDF security, lock PDF';
+
+// Additional head content
+$additional_head = '<style>
+        .password-group {
+            position: relative;
+        }
+        
+        .password-toggle {
+            position: absolute;
+            right: 1rem;
+            top: 2.5rem;
+            background: none;
+            border: none;
+            color: #666;
+            cursor: pointer;
+            font-size: 1.25rem;
+        }
+        
+        .password-toggle:hover {
+            color: var(--primary-color);
+        }
+        
+        .permissions-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin: 1.5rem 0;
+        }
+        
+        .permission-item {
+            display: flex;
+            align-items: center;
+            padding: 1rem;
+            background: var(--bg-light);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .permission-item:hover {
+            background: var(--primary-light);
+        }
+        
+        .permission-item input[type="checkbox"] {
+            margin-right: 0.75rem;
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+        
+        .permission-item label {
+            cursor: pointer;
+            flex: 1;
+        }
+        
+        .password-strength {
+            margin-top: 0.5rem;
+            height: 4px;
+            background: #e0e0e0;
+            border-radius: 2px;
+            overflow: hidden;
+        }
+        
+        .password-strength-bar {
+            height: 100%;
+            width: 0%;
+            transition: all 0.3s;
+        }
+        
+        .strength-weak { background: #f44336; width: 33%; }
+        .strength-medium { background: #FF9800; width: 66%; }
+        .strength-strong { background: #4CAF50; width: 100%; }
+    </style>';
+
+// JavaScript to be included
+$additional_scripts = '<script>
+        const uploadArea = document.getElementById(\'uploadArea\');
+        const fileInput = document.getElementById(\'pdfFile\');
+        const fileInfo = document.getElementById(\'fileInfo\');
+        const fileName = document.getElementById(\'fileName\');
+        const fileSize = document.getElementById(\'fileSize\');
+        const removeFile = document.getElementById(\'removeFile\');
+        const protectBtn = document.getElementById(\'protectBtn\');
+        const protectForm = document.getElementById(\'protectForm\');
+        const loader = document.getElementById(\'loader\');
+        const protectionSettings = document.getElementById(\'protectionSettings\');
+        const password = document.getElementById(\'password\');
+        const confirmPassword = document.getElementById(\'confirmPassword\');
+        const strengthBar = document.getElementById(\'strengthBar\');
+        const strengthText = document.getElementById(\'strengthText\');
+
+        uploadArea.addEventListener(\'click\', () => fileInput.click());
+
+        uploadArea.addEventListener(\'dragover\', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add(\'dragover\');
+        });
+
+        uploadArea.addEventListener(\'dragleave\', () => {
+            uploadArea.classList.remove(\'dragover\');
+        });
+
+        uploadArea.addEventListener(\'drop\', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove(\'dragover\');
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0 && files[0].type === \'application/pdf\') {
+                fileInput.files = files;
+                handleFileSelect();
+            }
+        });
+
+        fileInput.addEventListener(\'change\', handleFileSelect);
+
+        removeFile.addEventListener(\'click\', () => {
+            fileInput.value = \'\';
+            fileInfo.style.display = \'none\';
+            uploadArea.style.display = \'block\';
+            protectionSettings.style.display = \'none\';
+            protectBtn.disabled = true;
+        });
+
+        function handleFileSelect() {
+            const file = fileInput.files[0];
+            if (file) {
+                fileName.textContent = file.name;
+                fileSize.textContent = formatFileSize(file.size);
+                fileInfo.style.display = \'block\';
+                uploadArea.style.display = \'none\';
+                protectionSettings.style.display = \'block\';
+                validateForm();
+            }
+        }
+
+        function formatFileSize(bytes) {
+            const units = [\'B\', \'KB\', \'MB\', \'GB\'];
+            let i = 0;
+            while (bytes >= 1024 && i < units.length - 1) {
+                bytes /= 1024;
+                i++;
+            }
+            return bytes.toFixed(2) + \' \' + units[i];
+        }
+
+        // Password strength checker
+        password.addEventListener(\'input\', function() {
+            const value = this.value;
+            let strength = 0;
+            
+            if (value.length >= 6) strength++;
+            if (value.length >= 10) strength++;
+            if (/[a-z]/.test(value) && /[A-Z]/.test(value)) strength++;
+            if (/[0-9]/.test(value)) strength++;
+            if (/[^a-zA-Z0-9]/.test(value)) strength++;
+            
+            strengthBar.className = \'password-strength-bar\';
+            
+            if (strength <= 2) {
+                strengthBar.classList.add(\'strength-weak\');
+                strengthText.textContent = \'Weak password\';
+                strengthText.style.color = \'#f44336\';
+            } else if (strength <= 3) {
+                strengthBar.classList.add(\'strength-medium\');
+                strengthText.textContent = \'Medium strength\';
+                strengthText.style.color = \'#FF9800\';
+            } else {
+                strengthBar.classList.add(\'strength-strong\');
+                strengthText.textContent = \'Strong password\';
+                strengthText.style.color = \'#4CAF50\';
+            }
+            
+            validateForm();
+        });
+
+        confirmPassword.addEventListener(\'input\', validateForm);
+
+        function validateForm() {
+            const hasFile = fileInput.files.length > 0;
+            const hasPassword = password.value.length >= 6;
+            const passwordsMatch = password.value === confirmPassword.value;
+            
+            protectBtn.disabled = !(hasFile && hasPassword && passwordsMatch);
+            
+            if (confirmPassword.value && !passwordsMatch) {
+                confirmPassword.style.borderColor = \'#f44336\';
+            } else if (confirmPassword.value && passwordsMatch) {
+                confirmPassword.style.borderColor = \'#4CAF50\';
+            } else {
+                confirmPassword.style.borderColor = \'\';
+            }
+        }
+
+        // Password visibility toggle
+        document.getElementById(\'togglePassword\').addEventListener(\'click\', function() {
+            const type = password.type === \'password\' ? \'text\' : \'password\';
+            password.type = type;
+            this.querySelector(\'i\').className = type === \'password\' ? \'fas fa-eye\' : \'fas fa-eye-slash\';
+        });
+
+        document.getElementById(\'toggleConfirmPassword\').addEventListener(\'click\', function() {
+            const type = confirmPassword.type === \'password\' ? \'text\' : \'password\';
+            confirmPassword.type = type;
+            this.querySelector(\'i\').className = type === \'password\' ? \'fas fa-eye\' : \'fas fa-eye-slash\';
+        });
+
+        // Permission checkboxes
+        document.querySelectorAll(\'.permission-item\').forEach(item => {
+            item.addEventListener(\'click\', function(e) {
+                if (e.target.tagName !== \'INPUT\') {
+                    const checkbox = this.querySelector(\'input[type="checkbox"]\');
+                    checkbox.checked = !checkbox.checked;
+                }
+            });
+        });
+
+        protectForm.addEventListener(\'submit\', (e) => {
+            protectBtn.disabled = true;
+            loader.style.display = \'block\';
+        });
+    </script>';
+
 $error = '';
 $success = '';
 $downloadLink = '';
@@ -110,107 +336,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $csrfToken = generateCSRFToken();
+
+// Include header
+require_once '../includes/header.php';
 ?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Protect PDF - Triniva</title>
-    <link rel="stylesheet" href="../assets/css/style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <style>
-        .password-group {
-            position: relative;
-        }
-        
-        .password-toggle {
-            position: absolute;
-            right: 1rem;
-            top: 2.5rem;
-            background: none;
-            border: none;
-            color: #666;
-            cursor: pointer;
-            font-size: 1.25rem;
-        }
-        
-        .password-toggle:hover {
-            color: var(--primary-color);
-        }
-        
-        .permissions-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1rem;
-            margin: 1.5rem 0;
-        }
-        
-        .permission-item {
-            display: flex;
-            align-items: center;
-            padding: 1rem;
-            background: var(--bg-light);
-            border-radius: 6px;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-        
-        .permission-item:hover {
-            background: var(--primary-light);
-        }
-        
-        .permission-item input[type="checkbox"] {
-            margin-right: 0.75rem;
-            width: 18px;
-            height: 18px;
-            cursor: pointer;
-        }
-        
-        .permission-item label {
-            cursor: pointer;
-            flex: 1;
-        }
-        
-        .password-strength {
-            margin-top: 0.5rem;
-            height: 4px;
-            background: #e0e0e0;
-            border-radius: 2px;
-            overflow: hidden;
-        }
-        
-        .password-strength-bar {
-            height: 100%;
-            width: 0%;
-            transition: all 0.3s;
-        }
-        
-        .strength-weak { background: #f44336; width: 33%; }
-        .strength-medium { background: #FF9800; width: 66%; }
-        .strength-strong { background: #4CAF50; width: 100%; }
-    </style>
-</head>
-<body>
-    <header>
-        <div class="container">
-            <nav class="navbar">
-                <div class="logo">
-                    <a href="../index.php" style="text-decoration: none; color: inherit;">
-                        <i class="fas fa-file-pdf"></i>
-                        <span>Triniva</span>
-                    </a>
-                </div>
-                <ul class="nav-links" id="navLinks">
-                    <li><a href="../index.php">Home</a></li>
-                    <li><a href="../index.php#tools">All Tools</a></li>
-                </ul>
-                <button class="mobile-menu-toggle" id="mobileMenuToggle">
-                    <i class="fas fa-bars"></i>
-                </button>
-            </nav>
-        </div>
-    </header>
 
     <div class="tool-page">
         <div class="container">
@@ -357,158 +486,7 @@ $csrfToken = generateCSRFToken();
         </div>
     </div>
 
-    <footer>
-        <div class="container">
-            <p>&copy; 2024 Triniva. All rights reserved. A <a href="https://freshyportal.com" target="_blank" style="color: #fff; text-decoration: underline;">FreshyPortal</a> Product.</p>
-        </div>
-    </footer>
-
-    <script>
-        const uploadArea = document.getElementById('uploadArea');
-        const fileInput = document.getElementById('pdfFile');
-        const fileInfo = document.getElementById('fileInfo');
-        const fileName = document.getElementById('fileName');
-        const fileSize = document.getElementById('fileSize');
-        const removeFile = document.getElementById('removeFile');
-        const protectBtn = document.getElementById('protectBtn');
-        const protectForm = document.getElementById('protectForm');
-        const loader = document.getElementById('loader');
-        const protectionSettings = document.getElementById('protectionSettings');
-        const password = document.getElementById('password');
-        const confirmPassword = document.getElementById('confirmPassword');
-        const strengthBar = document.getElementById('strengthBar');
-        const strengthText = document.getElementById('strengthText');
-
-        uploadArea.addEventListener('click', () => fileInput.click());
-
-        uploadArea.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            uploadArea.classList.add('dragover');
-        });
-
-        uploadArea.addEventListener('dragleave', () => {
-            uploadArea.classList.remove('dragover');
-        });
-
-        uploadArea.addEventListener('drop', (e) => {
-            e.preventDefault();
-            uploadArea.classList.remove('dragover');
-            
-            const files = e.dataTransfer.files;
-            if (files.length > 0 && files[0].type === 'application/pdf') {
-                fileInput.files = files;
-                handleFileSelect();
-            }
-        });
-
-        fileInput.addEventListener('change', handleFileSelect);
-
-        removeFile.addEventListener('click', () => {
-            fileInput.value = '';
-            fileInfo.style.display = 'none';
-            uploadArea.style.display = 'block';
-            protectionSettings.style.display = 'none';
-            protectBtn.disabled = true;
-        });
-
-        function handleFileSelect() {
-            const file = fileInput.files[0];
-            if (file) {
-                fileName.textContent = file.name;
-                fileSize.textContent = formatFileSize(file.size);
-                fileInfo.style.display = 'block';
-                uploadArea.style.display = 'none';
-                protectionSettings.style.display = 'block';
-                validateForm();
-            }
-        }
-
-        function formatFileSize(bytes) {
-            const units = ['B', 'KB', 'MB', 'GB'];
-            let i = 0;
-            while (bytes >= 1024 && i < units.length - 1) {
-                bytes /= 1024;
-                i++;
-            }
-            return bytes.toFixed(2) + ' ' + units[i];
-        }
-
-        // Password strength checker
-        password.addEventListener('input', function() {
-            const value = this.value;
-            let strength = 0;
-            
-            if (value.length >= 6) strength++;
-            if (value.length >= 10) strength++;
-            if (/[a-z]/.test(value) && /[A-Z]/.test(value)) strength++;
-            if (/[0-9]/.test(value)) strength++;
-            if (/[^a-zA-Z0-9]/.test(value)) strength++;
-            
-            strengthBar.className = 'password-strength-bar';
-            
-            if (strength <= 2) {
-                strengthBar.classList.add('strength-weak');
-                strengthText.textContent = 'Weak password';
-                strengthText.style.color = '#f44336';
-            } else if (strength <= 3) {
-                strengthBar.classList.add('strength-medium');
-                strengthText.textContent = 'Medium strength';
-                strengthText.style.color = '#FF9800';
-            } else {
-                strengthBar.classList.add('strength-strong');
-                strengthText.textContent = 'Strong password';
-                strengthText.style.color = '#4CAF50';
-            }
-            
-            validateForm();
-        });
-
-        confirmPassword.addEventListener('input', validateForm);
-
-        function validateForm() {
-            const hasFile = fileInput.files.length > 0;
-            const hasPassword = password.value.length >= 6;
-            const passwordsMatch = password.value === confirmPassword.value;
-            
-            protectBtn.disabled = !(hasFile && hasPassword && passwordsMatch);
-            
-            if (confirmPassword.value && !passwordsMatch) {
-                confirmPassword.style.borderColor = '#f44336';
-            } else if (confirmPassword.value && passwordsMatch) {
-                confirmPassword.style.borderColor = '#4CAF50';
-            } else {
-                confirmPassword.style.borderColor = '';
-            }
-        }
-
-        // Password visibility toggle
-        document.getElementById('togglePassword').addEventListener('click', function() {
-            const type = password.type === 'password' ? 'text' : 'password';
-            password.type = type;
-            this.querySelector('i').className = type === 'password' ? 'fas fa-eye' : 'fas fa-eye-slash';
-        });
-
-        document.getElementById('toggleConfirmPassword').addEventListener('click', function() {
-            const type = confirmPassword.type === 'password' ? 'text' : 'password';
-            confirmPassword.type = type;
-            this.querySelector('i').className = type === 'password' ? 'fas fa-eye' : 'fas fa-eye-slash';
-        });
-
-        // Permission checkboxes
-        document.querySelectorAll('.permission-item').forEach(item => {
-            item.addEventListener('click', function(e) {
-                if (e.target.tagName !== 'INPUT') {
-                    const checkbox = this.querySelector('input[type="checkbox"]');
-                    checkbox.checked = !checkbox.checked;
-                }
-            });
-        });
-
-        protectForm.addEventListener('submit', (e) => {
-            protectBtn.disabled = true;
-            loader.style.display = 'block';
-        });
-    </script>
-    <script src="../assets/js/main.js"></script>
-</body>
-</html>
+<?php
+// Include footer
+require_once '../includes/footer.php';
+?>

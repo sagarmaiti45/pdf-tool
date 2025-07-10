@@ -1,6 +1,168 @@
 <?php
 require_once '../includes/functions.php';
 
+// Page variables for header
+$page_title = 'JPG to PDF - Convert Images to PDF';
+$page_description = 'Convert JPG, JPEG, and PNG images to PDF online. Create PDF documents from multiple images with custom page size and orientation.';
+$page_keywords = 'JPG to PDF, image to PDF, PNG to PDF, photo to PDF, convert images to PDF, picture to PDF';
+
+// Additional head content
+$additional_head = '<style>
+        .image-preview-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 1rem;
+            margin: 1.5rem 0;
+        }
+        
+        .image-preview {
+            position: relative;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            overflow: hidden;
+            aspect-ratio: 1;
+        }
+        
+        .image-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .image-preview .remove-btn {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: rgba(244, 67, 54, 0.9);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .image-preview .image-number {
+            position: absolute;
+            bottom: 5px;
+            left: 5px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.875rem;
+        }
+        
+        .settings-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin: 1.5rem 0;
+        }
+    </style>';
+
+// JavaScript to be included
+$additional_scripts = '<script>
+        const uploadArea = document.getElementById(\'uploadArea\');
+        const fileInput = document.getElementById(\'imageFiles\');
+        const imagePreview = document.getElementById(\'imagePreview\');
+        const previewGrid = document.getElementById(\'previewGrid\');
+        const pdfSettings = document.getElementById(\'pdfSettings\');
+        const convertBtn = document.getElementById(\'convertBtn\');
+        const convertForm = document.getElementById(\'convertForm\');
+        const loader = document.getElementById(\'loader\');
+        
+        let selectedFiles = [];
+
+        uploadArea.addEventListener(\'click\', () => fileInput.click());
+
+        uploadArea.addEventListener(\'dragover\', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add(\'dragover\');
+        });
+
+        uploadArea.addEventListener(\'dragleave\', () => {
+            uploadArea.classList.remove(\'dragover\');
+        });
+
+        uploadArea.addEventListener(\'drop\', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove(\'dragover\');
+            
+            const files = Array.from(e.dataTransfer.files).filter(file => 
+                file.type === \'image/jpeg\' || file.type === \'image/jpg\' || file.type === \'image/png\'
+            );
+            if (files.length > 0) {
+                addFiles(files);
+            }
+        });
+
+        fileInput.addEventListener(\'change\', (e) => {
+            addFiles(Array.from(e.target.files));
+        });
+
+        function addFiles(files) {
+            selectedFiles = [...selectedFiles, ...files];
+            displayPreviews();
+            
+            if (selectedFiles.length > 0) {
+                uploadArea.style.display = \'none\';
+                imagePreview.style.display = \'block\';
+                pdfSettings.style.display = \'block\';
+                convertBtn.disabled = false;
+            }
+        }
+
+        function displayPreviews() {
+            previewGrid.innerHTML = \'\';
+            
+            selectedFiles.forEach((file, index) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const preview = document.createElement(\'div\');
+                    preview.className = \'image-preview\';
+                    preview.innerHTML = `
+                        <img src="${e.target.result}" alt="${file.name}">
+                        <button type="button" class="remove-btn" onclick="removeImage(${index})">
+                            <i class="fas fa-times"></i>
+                        </button>
+                        <div class="image-number">${index + 1}</div>
+                    `;
+                    previewGrid.appendChild(preview);
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function removeImage(index) {
+            selectedFiles.splice(index, 1);
+            displayPreviews();
+            
+            if (selectedFiles.length === 0) {
+                uploadArea.style.display = \'block\';
+                imagePreview.style.display = \'none\';
+                pdfSettings.style.display = \'none\';
+                convertBtn.disabled = true;
+            }
+        }
+
+        convertForm.addEventListener(\'submit\', (e) => {
+            // Don\'t prevent default - let the form submit normally
+            convertBtn.disabled = true;
+            loader.style.display = \'block\';
+            
+            // Update the form to use the selected files
+            const dt = new DataTransfer();
+            selectedFiles.forEach(file => {
+                dt.items.add(file);
+            });
+            fileInput.files = dt.files;
+        });
+    </script>';
+
 $error = '';
 $success = '';
 $downloadLink = '';
@@ -195,92 +357,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 
 $csrfToken = generateCSRFToken();
+
+// Include header
+require_once '../includes/header.php';
 ?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JPG to PDF - Triniva</title>
-    <link rel="stylesheet" href="../assets/css/style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <style>
-        .image-preview-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-            gap: 1rem;
-            margin: 1.5rem 0;
-        }
-        
-        .image-preview {
-            position: relative;
-            border: 2px solid #e0e0e0;
-            border-radius: 8px;
-            overflow: hidden;
-            aspect-ratio: 1;
-        }
-        
-        .image-preview img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-        
-        .image-preview .remove-btn {
-            position: absolute;
-            top: 5px;
-            right: 5px;
-            background: rgba(244, 67, 54, 0.9);
-            color: white;
-            border: none;
-            border-radius: 50%;
-            width: 30px;
-            height: 30px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        
-        .image-preview .image-number {
-            position: absolute;
-            bottom: 5px;
-            left: 5px;
-            background: rgba(0, 0, 0, 0.7);
-            color: white;
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-size: 0.875rem;
-        }
-        
-        .settings-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1rem;
-            margin: 1.5rem 0;
-        }
-    </style>
-</head>
-<body>
-    <header>
-        <div class="container">
-            <nav class="navbar">
-                <div class="logo">
-                    <a href="../index.php" style="text-decoration: none; color: inherit;">
-                        <i class="fas fa-file-pdf"></i>
-                        <span>Triniva</span>
-                    </a>
-                </div>
-                <ul class="nav-links" id="navLinks">
-                    <li><a href="../index.php">Home</a></li>
-                    <li><a href="../index.php#tools">All Tools</a></li>
-                </ul>
-                <button class="mobile-menu-toggle" id="mobileMenuToggle">
-                    <i class="fas fa-bars"></i>
-                </button>
-            </nav>
-        </div>
-    </header>
 
     <div class="tool-page">
         <div class="container">
@@ -375,109 +455,7 @@ $csrfToken = generateCSRFToken();
         </div>
     </div>
 
-    <footer>
-        <div class="container">
-            <p>&copy; 2024 Triniva. All rights reserved. A <a href="https://freshyportal.com" target="_blank" style="color: #fff; text-decoration: underline;">FreshyPortal</a> Product.</p>
-        </div>
-    </footer>
-
-    <script>
-        const uploadArea = document.getElementById('uploadArea');
-        const fileInput = document.getElementById('imageFiles');
-        const imagePreview = document.getElementById('imagePreview');
-        const previewGrid = document.getElementById('previewGrid');
-        const pdfSettings = document.getElementById('pdfSettings');
-        const convertBtn = document.getElementById('convertBtn');
-        const convertForm = document.getElementById('convertForm');
-        const loader = document.getElementById('loader');
-        
-        let selectedFiles = [];
-
-        uploadArea.addEventListener('click', () => fileInput.click());
-
-        uploadArea.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            uploadArea.classList.add('dragover');
-        });
-
-        uploadArea.addEventListener('dragleave', () => {
-            uploadArea.classList.remove('dragover');
-        });
-
-        uploadArea.addEventListener('drop', (e) => {
-            e.preventDefault();
-            uploadArea.classList.remove('dragover');
-            
-            const files = Array.from(e.dataTransfer.files).filter(file => 
-                file.type === 'image/jpeg' || file.type === 'image/jpg' || file.type === 'image/png'
-            );
-            if (files.length > 0) {
-                addFiles(files);
-            }
-        });
-
-        fileInput.addEventListener('change', (e) => {
-            addFiles(Array.from(e.target.files));
-        });
-
-        function addFiles(files) {
-            selectedFiles = [...selectedFiles, ...files];
-            displayPreviews();
-            
-            if (selectedFiles.length > 0) {
-                uploadArea.style.display = 'none';
-                imagePreview.style.display = 'block';
-                pdfSettings.style.display = 'block';
-                convertBtn.disabled = false;
-            }
-        }
-
-        function displayPreviews() {
-            previewGrid.innerHTML = '';
-            
-            selectedFiles.forEach((file, index) => {
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    const preview = document.createElement('div');
-                    preview.className = 'image-preview';
-                    preview.innerHTML = `
-                        <img src="${e.target.result}" alt="${file.name}">
-                        <button type="button" class="remove-btn" onclick="removeImage(${index})">
-                            <i class="fas fa-times"></i>
-                        </button>
-                        <div class="image-number">${index + 1}</div>
-                    `;
-                    previewGrid.appendChild(preview);
-                };
-                reader.readAsDataURL(file);
-            });
-        }
-
-        function removeImage(index) {
-            selectedFiles.splice(index, 1);
-            displayPreviews();
-            
-            if (selectedFiles.length === 0) {
-                uploadArea.style.display = 'block';
-                imagePreview.style.display = 'none';
-                pdfSettings.style.display = 'none';
-                convertBtn.disabled = true;
-            }
-        }
-
-        convertForm.addEventListener('submit', (e) => {
-            // Don't prevent default - let the form submit normally
-            convertBtn.disabled = true;
-            loader.style.display = 'block';
-            
-            // Update the form to use the selected files
-            const dt = new DataTransfer();
-            selectedFiles.forEach(file => {
-                dt.items.add(file);
-            });
-            fileInput.files = dt.files;
-        });
-    </script>
-    <script src="../assets/js/main.js"></script>
-</body>
-</html>
+<?php
+// Include footer
+require_once '../includes/footer.php';
+?>

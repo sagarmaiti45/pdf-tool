@@ -1,46 +1,53 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>About Us - Triniva | Free Online PDF Converter</title>
-    <meta name="description" content="Learn about Triniva - your trusted partner for free online PDF conversion and editing. Discover our mission, values, and commitment to providing the best PDF tools.">
-    <meta name="keywords" content="about Triniva, PDF converter company, online PDF tools, free PDF service">
-    
-    <!-- Open Graph / Facebook -->
-    <meta property="og:type" content="website">
-    <meta property="og:url" content="https://www.triniva.com/about.php">
-    <meta property="og:title" content="About Triniva - Free Online PDF Converter">
-    <meta property="og:description" content="Learn about our mission to provide the best free PDF tools online. Fast, secure, and easy to use.">
-    
-    <!-- Canonical URL -->
-    <link rel="canonical" href="https://www.triniva.com/about.php">
-    
-    <link rel="stylesheet" href="assets/css/style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-</head>
-<body>
-    <header>
-        <div class="container">
-            <nav class="navbar">
-                <div class="logo">
-                    <a href="index.php" style="text-decoration: none; color: inherit;">
-                        <i class="fas fa-file-pdf"></i>
-                        <span>Triniva</span>
-                    </a>
-                </div>
-                <ul class="nav-links" id="navLinks">
-                    <li><a href="index.php">Home</a></li>
-                    <li><a href="index.php#tools">All Tools</a></li>
-                    <li><a href="about.php" class="active">About</a></li>
-                    <li><a href="contact.php">Contact</a></li>
-                </ul>
-                <button class="mobile-menu-toggle" id="mobileMenuToggle">
-                    <i class="fas fa-bars"></i>
-                </button>
-            </nav>
-        </div>
-    </header>
+<?php
+// Page variables
+$page_title = 'About Us';
+$page_description = 'Learn about Triniva - your trusted partner for free online PDF conversion and editing. Discover our mission, values, and commitment to providing the best PDF tools.';
+$page_keywords = 'about Triniva, PDF converter company, online PDF tools, free PDF service';
+
+// Additional scripts for this page
+$additional_scripts = '
+<script>
+    // Animate statistics on scroll
+    const observerOptions = {
+        threshold: 0.5,
+        rootMargin: "0px"
+    };
+
+    const observer = new IntersectionObserver(function(entries) {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                const statCards = entry.target.querySelectorAll(".stat-card h3");
+                statCards.forEach(stat => {
+                    const target = stat.textContent;
+                    const number = parseInt(target.replace(/[^0-9]/g, ""));
+                    const suffix = target.replace(/[0-9]/g, "");
+                    let current = 0;
+                    const increment = number / 50;
+                    
+                    const timer = setInterval(() => {
+                        current += increment;
+                        if (current >= number) {
+                            current = number;
+                            clearInterval(timer);
+                        }
+                        stat.textContent = Math.floor(current) + suffix;
+                    }, 30);
+                });
+                observer.unobserve(entry.target);
+            }
+        });
+    }, observerOptions);
+
+    const statsSection = document.querySelector(".stats-grid");
+    if (statsSection) {
+        observer.observe(statsSection);
+    }
+</script>
+';
+
+// Include header
+require_once 'includes/header.php';
+?>
 
     <div class="page-header">
         <div class="container">
@@ -196,72 +203,7 @@
         </div>
     </section>
 
-    <footer>
-        <div class="container">
-            <div class="footer-content">
-                <div class="footer-section">
-                    <h3>Triniva</h3>
-                    <p>Professional PDF tools that are fast, secure, and completely free.</p>
-                </div>
-                <div class="footer-section">
-                    <h4>Quick Links</h4>
-                    <ul>
-                        <li><a href="index.php">Home</a></li>
-                        <li><a href="index.php#tools">All Tools</a></li>
-                        <li><a href="contact.php">Contact</a></li>
-                    </ul>
-                </div>
-                <div class="footer-section">
-                    <h4>Legal</h4>
-                    <ul>
-                        <li><a href="privacy.php">Privacy Policy</a></li>
-                        <li><a href="terms.php">Terms & Conditions</a></li>
-                    </ul>
-                </div>
-            </div>
-            <div class="footer-bottom">
-                <p>&copy; 2024 Triniva. All rights reserved. A <a href="https://freshyportal.com" target="_blank" style="color: #fff; text-decoration: underline;">FreshyPortal</a> Product.</p>
-            </div>
-        </div>
-    </footer>
-
-    <script src="assets/js/main.js"></script>
-    <script>
-        // Animate statistics on scroll
-        const observerOptions = {
-            threshold: 0.5,
-            rootMargin: '0px'
-        };
-
-        const observer = new IntersectionObserver(function(entries) {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    const statCards = entry.target.querySelectorAll('.stat-card h3');
-                    statCards.forEach(stat => {
-                        const target = stat.textContent;
-                        const number = parseInt(target.replace(/[^0-9]/g, ''));
-                        const suffix = target.replace(/[0-9]/g, '');
-                        let current = 0;
-                        const increment = number / 50;
-                        
-                        const timer = setInterval(() => {
-                            current += increment;
-                            if (current >= number) {
-                                current = number;
-                                clearInterval(timer);
-                            }
-                            stat.textContent = Math.floor(current) + suffix;
-                        }, 30);
-                    });
-                    observer.unobserve(entry.target);
-                }
-            });
-        }, observerOptions);
-
-        const statsSection = document.querySelector('.stats-grid');
-        if (statsSection) {
-            observer.observe(statsSection);
-        }
-    </script>
-</body>
-</html>
+<?php
+// Include footer
+require_once 'includes/footer.php';
+?>

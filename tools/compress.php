@@ -1,6 +1,90 @@
 <?php
 require_once '../includes/functions.php';
 
+// Page variables for header
+$page_title = 'Compress PDF - Reduce File Size';
+$page_description = 'Compress and reduce the size of your PDF files online without losing quality. Free PDF compression tool with multiple compression levels.';
+$page_keywords = 'compress PDF, reduce PDF size, PDF compressor, optimize PDF, shrink PDF, PDF compression online';
+
+// JavaScript to be included
+$additional_scripts = '<script>
+        const uploadArea = document.getElementById(\'uploadArea\');
+        const fileInput = document.getElementById(\'pdfFile\');
+        const fileInfo = document.getElementById(\'fileInfo\');
+        const fileName = document.getElementById(\'fileName\');
+        const fileSize = document.getElementById(\'fileSize\');
+        const removeFile = document.getElementById(\'removeFile\');
+        const compressBtn = document.getElementById(\'compressBtn\');
+        const compressForm = document.getElementById(\'compressForm\');
+        const progressContainer = document.getElementById(\'progressContainer\');
+        const loader = document.getElementById(\'loader\');
+
+        uploadArea.addEventListener(\'click\', () => fileInput.click());
+
+        uploadArea.addEventListener(\'dragover\', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add(\'dragover\');
+        });
+
+        uploadArea.addEventListener(\'dragleave\', () => {
+            uploadArea.classList.remove(\'dragover\');
+        });
+
+        uploadArea.addEventListener(\'drop\', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove(\'dragover\');
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0 && files[0].type === \'application/pdf\') {
+                fileInput.files = files;
+                handleFileSelect();
+            }
+        });
+
+        fileInput.addEventListener(\'change\', handleFileSelect);
+
+        removeFile.addEventListener(\'click\', () => {
+            fileInput.value = \'\';
+            fileInfo.style.display = \'none\';
+            uploadArea.style.display = \'block\';
+            compressBtn.disabled = true;
+        });
+
+        function handleFileSelect() {
+            const file = fileInput.files[0];
+            if (file) {
+                fileName.textContent = file.name;
+                fileSize.textContent = formatFileSize(file.size);
+                fileInfo.style.display = \'block\';
+                uploadArea.style.display = \'none\';
+                compressBtn.disabled = false;
+            }
+        }
+
+        function formatFileSize(bytes) {
+            const units = [\'B\', \'KB\', \'MB\', \'GB\'];
+            let i = 0;
+            while (bytes >= 1024 && i < units.length - 1) {
+                bytes /= 1024;
+                i++;
+            }
+            return bytes.toFixed(2) + \' \' + units[i];
+        }
+
+        compressForm.addEventListener(\'submit\', (e) => {
+            compressBtn.disabled = true;
+            loader.style.display = \'block\';
+            progressContainer.style.display = \'block\';
+            
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += Math.random() * 15;
+                if (progress > 90) progress = 90;
+                document.getElementById(\'progressBar\').style.width = progress + \'%\';
+            }, 300);
+        });
+    </script>';
+
 $error = '';
 $success = '';
 $downloadLink = '';
@@ -201,36 +285,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $csrfToken = generateCSRFToken();
+
+// Include header
+require_once '../includes/header.php';
 ?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Compress PDF - Triniva</title>
-    <link rel="stylesheet" href="../assets/css/style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-</head>
-<body>
-    <header>
-        <div class="container">
-            <nav class="navbar">
-                <div class="logo">
-                    <a href="../index.php" style="text-decoration: none; color: inherit;">
-                        <i class="fas fa-file-pdf"></i>
-                        <span>Triniva</span>
-                    </a>
-                </div>
-                <ul class="nav-links" id="navLinks">
-                    <li><a href="../index.php">Home</a></li>
-                    <li><a href="../index.php#tools">All Tools</a></li>
-                </ul>
-                <button class="mobile-menu-toggle" id="mobileMenuToggle">
-                    <i class="fas fa-bars"></i>
-                </button>
-            </nav>
-        </div>
-    </header>
 
     <div class="tool-page">
         <div class="container">
@@ -329,113 +387,7 @@ $csrfToken = generateCSRFToken();
         </div>
     </div>
 
-    <footer>
-        <div class="container">
-            <div class="footer-content">
-                <div class="footer-section">
-                    <h3>Triniva</h3>
-                    <p>Professional PDF tools that are fast, secure, and completely free.</p>
-                </div>
-                <div class="footer-section">
-                    <h4>Quick Links</h4>
-                    <ul>
-                        <li><a href="../index.php">Home</a></li>
-                        <li><a href="../index.php#tools">All Tools</a></li>
-                        <li><a href="../about.php">About</a></li>
-                        <li><a href="../contact.php">Contact</a></li>
-                    </ul>
-                </div>
-                <div class="footer-section">
-                    <h4>Legal</h4>
-                    <ul>
-                        <li><a href="../privacy.php">Privacy Policy</a></li>
-                        <li><a href="../terms.php">Terms & Conditions</a></li>
-                    </ul>
-                </div>
-            </div>
-            <div class="footer-bottom">
-                <p>&copy; 2024 Triniva. All rights reserved. A <a href="https://freshyportal.com" target="_blank" style="color: #fff; text-decoration: underline;">FreshyPortal</a> Product.</p>
-            </div>
-        </div>
-    </footer>
-
-    <script src="../assets/js/main.js"></script>
-    <script>
-        const uploadArea = document.getElementById('uploadArea');
-        const fileInput = document.getElementById('pdfFile');
-        const fileInfo = document.getElementById('fileInfo');
-        const fileName = document.getElementById('fileName');
-        const fileSize = document.getElementById('fileSize');
-        const removeFile = document.getElementById('removeFile');
-        const compressBtn = document.getElementById('compressBtn');
-        const compressForm = document.getElementById('compressForm');
-        const progressContainer = document.getElementById('progressContainer');
-        const loader = document.getElementById('loader');
-
-        uploadArea.addEventListener('click', () => fileInput.click());
-
-        uploadArea.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            uploadArea.classList.add('dragover');
-        });
-
-        uploadArea.addEventListener('dragleave', () => {
-            uploadArea.classList.remove('dragover');
-        });
-
-        uploadArea.addEventListener('drop', (e) => {
-            e.preventDefault();
-            uploadArea.classList.remove('dragover');
-            
-            const files = e.dataTransfer.files;
-            if (files.length > 0 && files[0].type === 'application/pdf') {
-                fileInput.files = files;
-                handleFileSelect();
-            }
-        });
-
-        fileInput.addEventListener('change', handleFileSelect);
-
-        removeFile.addEventListener('click', () => {
-            fileInput.value = '';
-            fileInfo.style.display = 'none';
-            uploadArea.style.display = 'block';
-            compressBtn.disabled = true;
-        });
-
-        function handleFileSelect() {
-            const file = fileInput.files[0];
-            if (file) {
-                fileName.textContent = file.name;
-                fileSize.textContent = formatFileSize(file.size);
-                fileInfo.style.display = 'block';
-                uploadArea.style.display = 'none';
-                compressBtn.disabled = false;
-            }
-        }
-
-        function formatFileSize(bytes) {
-            const units = ['B', 'KB', 'MB', 'GB'];
-            let i = 0;
-            while (bytes >= 1024 && i < units.length - 1) {
-                bytes /= 1024;
-                i++;
-            }
-            return bytes.toFixed(2) + ' ' + units[i];
-        }
-
-        compressForm.addEventListener('submit', (e) => {
-            compressBtn.disabled = true;
-            loader.style.display = 'block';
-            progressContainer.style.display = 'block';
-            
-            let progress = 0;
-            const interval = setInterval(() => {
-                progress += Math.random() * 15;
-                if (progress > 90) progress = 90;
-                document.getElementById('progressBar').style.width = progress + '%';
-            }, 300);
-        });
-    </script>
-</body>
-</html>
+<?php
+// Include footer
+require_once '../includes/footer.php';
+?>

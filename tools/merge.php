@@ -2,6 +2,160 @@
 require_once '../includes/functions.php';
 require_once '../includes/normalize-page.php';
 
+// Page variables for header
+$page_title = 'Merge PDF - Combine Multiple Files';
+$page_description = 'Merge multiple PDF files into a single document online. Fast and free PDF merger with drag-and-drop file reordering.';
+$page_keywords = 'merge PDF, combine PDF, PDF merger, join PDF files, PDF combiner, merge PDFs online';
+
+// JavaScript to be included
+$additional_scripts = '<script>
+        const uploadArea = document.getElementById(\'uploadArea\');
+        const fileInput = document.getElementById(\'pdfFiles\');
+        const fileList = document.getElementById(\'fileList\');
+        const sortableList = document.getElementById(\'sortableList\');
+        const mergeBtn = document.getElementById(\'mergeBtn\');
+        const mergeForm = document.getElementById(\'mergeForm\');
+        const loader = document.getElementById(\'loader\');
+        
+        let selectedFiles = [];
+
+        uploadArea.addEventListener(\'click\', () => fileInput.click());
+
+        uploadArea.addEventListener(\'dragover\', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add(\'dragover\');
+        });
+
+        uploadArea.addEventListener(\'dragleave\', () => {
+            uploadArea.classList.remove(\'dragover\');
+        });
+
+        uploadArea.addEventListener(\'drop\', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove(\'dragover\');
+            
+            const files = Array.from(e.dataTransfer.files).filter(file => file.type === \'application/pdf\');
+            if (files.length > 0) {
+                handleFiles(files);
+            }
+        });
+
+        fileInput.addEventListener(\'change\', (e) => {
+            handleFiles(Array.from(e.target.files));
+        });
+
+        function handleFiles(files) {
+            selectedFiles = files;
+            displayFiles();
+            mergeBtn.disabled = files.length < 2;
+        }
+
+        function displayFiles() {
+            if (selectedFiles.length === 0) {
+                fileList.style.display = \'none\';
+                uploadArea.style.display = \'block\';
+                return;
+            }
+            
+            sortableList.innerHTML = \'\';
+            selectedFiles.forEach((file, index) => {
+                const fileItem = document.createElement(\'div\');
+                fileItem.className = \'file-item\';
+                fileItem.draggable = true;
+                fileItem.dataset.index = index;
+                
+                fileItem.innerHTML = `
+                    <div class="file-info">
+                        <i class="fas fa-grip-vertical" style="margin-right: 1rem; color: #999; cursor: move;"></i>
+                        <i class="fas fa-file-pdf file-icon"></i>
+                        <div>
+                            <div class="file-name">${file.name}</div>
+                            <div class="file-size">${formatFileSize(file.size)}</div>
+                        </div>
+                    </div>
+                    <button type="button" class="file-remove" onclick="removeFile(${index})">
+                        <i class="fas fa-times"></i>
+                    </button>
+                `;
+                
+                fileItem.addEventListener(\'dragstart\', handleDragStart);
+                fileItem.addEventListener(\'dragover\', handleDragOver);
+                fileItem.addEventListener(\'drop\', handleDrop);
+                fileItem.addEventListener(\'dragend\', handleDragEnd);
+                
+                sortableList.appendChild(fileItem);
+            });
+            
+            fileList.style.display = \'block\';
+            uploadArea.style.display = \'none\';
+        }
+
+        function removeFile(index) {
+            selectedFiles.splice(index, 1);
+            displayFiles();
+            mergeBtn.disabled = selectedFiles.length < 2;
+        }
+
+        function formatFileSize(bytes) {
+            const units = [\'B\', \'KB\', \'MB\', \'GB\'];
+            let i = 0;
+            while (bytes >= 1024 && i < units.length - 1) {
+                bytes /= 1024;
+                i++;
+            }
+            return bytes.toFixed(2) + \' \' + units[i];
+        }
+
+        let draggedIndex = null;
+        
+        // Handle page size options
+        const pageSizeSettings = document.getElementById(\'pageSizeSettings\');
+        document.querySelectorAll(\'input[name="page_size_option"]\').forEach(radio => {
+            radio.addEventListener(\'change\', function() {
+                pageSizeSettings.style.display = this.value === \'normalize\' ? \'block\' : \'none\';
+            });
+        });
+
+        function handleDragStart(e) {
+            draggedIndex = parseInt(e.target.dataset.index);
+            e.target.style.opacity = \'0.5\';
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = \'move\';
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            const droppedIndex = parseInt(e.target.closest(\'.file-item\').dataset.index);
+            
+            if (draggedIndex !== droppedIndex) {
+                const draggedFile = selectedFiles[draggedIndex];
+                selectedFiles.splice(draggedIndex, 1);
+                selectedFiles.splice(droppedIndex, 0, draggedFile);
+                displayFiles();
+            }
+        }
+
+        function handleDragEnd(e) {
+            e.target.style.opacity = \'\';
+        }
+
+        mergeForm.addEventListener(\'submit\', (e) => {
+            // Don\'t prevent default - let the form submit normally
+            mergeBtn.disabled = true;
+            loader.style.display = \'block\';
+            
+            // Update the form to use the selected files
+            const dt = new DataTransfer();
+            selectedFiles.forEach(file => {
+                dt.items.add(file);
+            });
+            fileInput.files = dt.files;
+        });
+    </script>';
+
 // Enable error reporting for debugging
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
@@ -186,33 +340,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $csrfToken = generateCSRFToken();
+
+// Include header
+require_once '../includes/header.php';
 ?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Merge PDF - Triniva</title>
-    <link rel="stylesheet" href="../assets/css/style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-</head>
-<body>
-    <header>
-        <div class="container">
-            <nav class="navbar">
-                <div class="logo">
-                    <a href="../index.php" style="text-decoration: none; color: inherit;">
-                        <i class="fas fa-file-pdf"></i>
-                        <span>Triniva</span>
-                    </a>
-                </div>
-                <ul class="nav-links">
-                    <li><a href="../index.php">Home</a></li>
-                    <li><a href="../index.php#tools">All Tools</a></li>
-                </ul>
-            </nav>
-        </div>
-    </header>
 
     <div class="tool-page">
         <div class="container">
@@ -310,190 +441,7 @@ $csrfToken = generateCSRFToken();
         </div>
     </div>
 
-    <footer>
-        <div class="container">
-            <p>&copy; 2024 PDF Tools Pro. All rights reserved.</p>
-        </div>
-    </footer>
-
-    <script>
-        const uploadArea = document.getElementById('uploadArea');
-        const fileInput = document.getElementById('pdfFiles');
-        const fileList = document.getElementById('fileList');
-        const sortableList = document.getElementById('sortableList');
-        const mergeBtn = document.getElementById('mergeBtn');
-        const mergeForm = document.getElementById('mergeForm');
-        const loader = document.getElementById('loader');
-        
-        let selectedFiles = [];
-
-        uploadArea.addEventListener('click', () => fileInput.click());
-
-        uploadArea.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            uploadArea.classList.add('dragover');
-        });
-
-        uploadArea.addEventListener('dragleave', () => {
-            uploadArea.classList.remove('dragover');
-        });
-
-        uploadArea.addEventListener('drop', (e) => {
-            e.preventDefault();
-            uploadArea.classList.remove('dragover');
-            
-            const files = Array.from(e.dataTransfer.files).filter(file => file.type === 'application/pdf');
-            if (files.length > 0) {
-                handleFiles(files);
-            }
-        });
-
-        fileInput.addEventListener('change', (e) => {
-            handleFiles(Array.from(e.target.files));
-        });
-
-        function handleFiles(files) {
-            selectedFiles = files;
-            displayFiles();
-            mergeBtn.disabled = files.length < 2;
-        }
-
-        function displayFiles() {
-            if (selectedFiles.length === 0) {
-                fileList.style.display = 'none';
-                uploadArea.style.display = 'block';
-                return;
-            }
-            
-            sortableList.innerHTML = '';
-            selectedFiles.forEach((file, index) => {
-                const fileItem = document.createElement('div');
-                fileItem.className = 'file-item';
-                fileItem.draggable = true;
-                fileItem.dataset.index = index;
-                
-                fileItem.innerHTML = `
-                    <div class="file-info">
-                        <i class="fas fa-grip-vertical" style="margin-right: 1rem; color: #999; cursor: move;"></i>
-                        <i class="fas fa-file-pdf file-icon"></i>
-                        <div>
-                            <div class="file-name">${file.name}</div>
-                            <div class="file-size">${formatFileSize(file.size)}</div>
-                        </div>
-                    </div>
-                    <button type="button" class="file-remove" onclick="removeFile(${index})">
-                        <i class="fas fa-times"></i>
-                    </button>
-                `;
-                
-                fileItem.addEventListener('dragstart', handleDragStart);
-                fileItem.addEventListener('dragover', handleDragOver);
-                fileItem.addEventListener('drop', handleDrop);
-                fileItem.addEventListener('dragend', handleDragEnd);
-                
-                sortableList.appendChild(fileItem);
-            });
-            
-            fileList.style.display = 'block';
-            uploadArea.style.display = 'none';
-        }
-
-        function removeFile(index) {
-            selectedFiles.splice(index, 1);
-            displayFiles();
-            mergeBtn.disabled = selectedFiles.length < 2;
-        }
-
-        function formatFileSize(bytes) {
-            const units = ['B', 'KB', 'MB', 'GB'];
-            let i = 0;
-            while (bytes >= 1024 && i < units.length - 1) {
-                bytes /= 1024;
-                i++;
-            }
-            return bytes.toFixed(2) + ' ' + units[i];
-        }
-
-        let draggedIndex = null;
-        
-        // Handle page size options
-        const pageSizeSettings = document.getElementById('pageSizeSettings');
-        document.querySelectorAll('input[name="page_size_option"]').forEach(radio => {
-            radio.addEventListener('change', function() {
-                pageSizeSettings.style.display = this.value === 'normalize' ? 'block' : 'none';
-            });
-        });
-
-        function handleDragStart(e) {
-            draggedIndex = parseInt(e.target.dataset.index);
-            e.target.style.opacity = '0.5';
-        }
-
-        function handleDragOver(e) {
-            e.preventDefault();
-            e.dataTransfer.dropEffect = 'move';
-        }
-
-        function handleDrop(e) {
-            e.preventDefault();
-            const droppedIndex = parseInt(e.target.closest('.file-item').dataset.index);
-            
-            if (draggedIndex !== droppedIndex) {
-                const draggedFile = selectedFiles[draggedIndex];
-                selectedFiles.splice(draggedIndex, 1);
-                selectedFiles.splice(droppedIndex, 0, draggedFile);
-                displayFiles();
-            }
-        }
-
-        function handleDragEnd(e) {
-            e.target.style.opacity = '';
-        }
-
-        mergeForm.addEventListener('submit', (e) => {
-            // Don't prevent default - let the form submit normally
-            mergeBtn.disabled = true;
-            loader.style.display = 'block';
-            
-            // Update the form to use the selected files
-            const dt = new DataTransfer();
-            selectedFiles.forEach(file => {
-                dt.items.add(file);
-            });
-            fileInput.files = dt.files;
-        });
-    </script>
-
-    <footer>
-        <div class="container">
-            <div class="footer-content">
-                <div class="footer-section">
-                    <h3>Triniva</h3>
-                    <p>Professional PDF tools that are fast, secure, and completely free.</p>
-                </div>
-                <div class="footer-section">
-                    <h4>Quick Links</h4>
-                    <ul>
-                        <li><a href="../index.php">Home</a></li>
-                        <li><a href="../index.php#tools">All Tools</a></li>
-                        <li><a href="../about.php">About</a></li>
-                        <li><a href="../contact.php">Contact</a></li>
-                    </ul>
-                </div>
-                <div class="footer-section">
-                    <h4>Legal</h4>
-                    <ul>
-                        <li><a href="../privacy.php">Privacy Policy</a></li>
-                        <li><a href="../terms.php">Terms & Conditions</a></li>
-                    </ul>
-                </div>
-            </div>
-            <div class="footer-bottom">
-                <p>&copy; 2024 Triniva. All rights reserved. A <a href="https://freshyportal.com" target="_blank" style="color: #fff; text-decoration: underline;">FreshyPortal</a> Product.</p>
-            </div>
-        </div>
-    </footer>
-
-    <script src="../assets/js/main.js"></script>
-</body>
-</html>
+<?php
+// Include footer
+require_once '../includes/footer.php';
+?>

@@ -1,6 +1,152 @@
 <?php
 require_once '../includes/functions.php';
 
+// Page variables for header
+$page_title = 'PDF to JPG - Extract Images from PDF';
+$page_description = 'Convert PDF pages to JPG images online. Extract high-quality images from PDF documents with custom resolution and quality settings.';
+$page_keywords = 'PDF to JPG, PDF to image, extract images from PDF, PDF converter, PDF to JPEG, convert PDF pages';
+
+// Additional head content
+$additional_head = '<style>
+        .quality-slider {
+            margin: 1.5rem 0;
+        }
+        
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .slider {
+            flex: 1;
+            -webkit-appearance: none;
+            height: 8px;
+            border-radius: 4px;
+            background: #ddd;
+            outline: none;
+        }
+        
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: var(--primary-color);
+            cursor: pointer;
+        }
+        
+        .slider::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: var(--primary-color);
+            cursor: pointer;
+        }
+        
+        .slider-value {
+            min-width: 50px;
+            text-align: center;
+            font-weight: 600;
+            color: var(--primary-color);
+        }
+        
+        .settings-grid {
+            display: grid;
+            gap: 1.5rem;
+            margin: 1.5rem 0;
+        }
+    </style>';
+
+// JavaScript to be included
+$additional_scripts = '<script>
+        const uploadArea = document.getElementById(\'uploadArea\');
+        const fileInput = document.getElementById(\'pdfFile\');
+        const fileInfo = document.getElementById(\'fileInfo\');
+        const fileName = document.getElementById(\'fileName\');
+        const fileSize = document.getElementById(\'fileSize\');
+        const removeFile = document.getElementById(\'removeFile\');
+        const convertBtn = document.getElementById(\'convertBtn\');
+        const convertForm = document.getElementById(\'convertForm\');
+        const loader = document.getElementById(\'loader\');
+        const conversionSettings = document.getElementById(\'conversionSettings\');
+        const customPages = document.getElementById(\'customPages\');
+        const qualitySlider = document.getElementById(\'qualitySlider\');
+        const qualityValue = document.getElementById(\'qualityValue\');
+
+        uploadArea.addEventListener(\'click\', () => fileInput.click());
+
+        uploadArea.addEventListener(\'dragover\', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add(\'dragover\');
+        });
+
+        uploadArea.addEventListener(\'dragleave\', () => {
+            uploadArea.classList.remove(\'dragover\');
+        });
+
+        uploadArea.addEventListener(\'drop\', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove(\'dragover\');
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0 && files[0].type === \'application/pdf\') {
+                fileInput.files = files;
+                handleFileSelect();
+            }
+        });
+
+        fileInput.addEventListener(\'change\', handleFileSelect);
+
+        removeFile.addEventListener(\'click\', () => {
+            fileInput.value = \'\';
+            fileInfo.style.display = \'none\';
+            uploadArea.style.display = \'block\';
+            conversionSettings.style.display = \'none\';
+            convertBtn.disabled = true;
+        });
+
+        function handleFileSelect() {
+            const file = fileInput.files[0];
+            if (file) {
+                fileName.textContent = file.name;
+                fileSize.textContent = formatFileSize(file.size);
+                fileInfo.style.display = \'block\';
+                uploadArea.style.display = \'none\';
+                conversionSettings.style.display = \'block\';
+                convertBtn.disabled = false;
+            }
+        }
+
+        function formatFileSize(bytes) {
+            const units = [\'B\', \'KB\', \'MB\', \'GB\'];
+            let i = 0;
+            while (bytes >= 1024 && i < units.length - 1) {
+                bytes /= 1024;
+                i++;
+            }
+            return bytes.toFixed(2) + \' \' + units[i];
+        }
+
+        // Quality slider
+        qualitySlider.addEventListener(\'input\', function() {
+            qualityValue.textContent = this.value + \'%\';
+        });
+
+        // Page selection
+        document.querySelectorAll(\'input[name="pages"]\').forEach(radio => {
+            radio.addEventListener(\'change\', function() {
+                customPages.style.display = this.value === \'custom\' ? \'block\' : \'none\';
+            });
+        });
+
+        convertForm.addEventListener(\'submit\', (e) => {
+            convertBtn.disabled = true;
+            loader.style.display = \'block\';
+        });
+    </script>';
+
 $error = '';
 $success = '';
 $downloadLinks = [];
@@ -157,87 +303,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $csrfToken = generateCSRFToken();
+
+// Include header
+require_once '../includes/header.php';
 ?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PDF to JPG - Triniva</title>
-    <link rel="stylesheet" href="../assets/css/style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <style>
-        .quality-slider {
-            margin: 1.5rem 0;
-        }
-        
-        .slider-container {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
-        
-        .slider {
-            flex: 1;
-            -webkit-appearance: none;
-            height: 8px;
-            border-radius: 4px;
-            background: #ddd;
-            outline: none;
-        }
-        
-        .slider::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            appearance: none;
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            background: var(--primary-color);
-            cursor: pointer;
-        }
-        
-        .slider::-moz-range-thumb {
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            background: var(--primary-color);
-            cursor: pointer;
-        }
-        
-        .slider-value {
-            min-width: 50px;
-            text-align: center;
-            font-weight: 600;
-            color: var(--primary-color);
-        }
-        
-        .settings-grid {
-            display: grid;
-            gap: 1.5rem;
-            margin: 1.5rem 0;
-        }
-    </style>
-</head>
-<body>
-    <header>
-        <div class="container">
-            <nav class="navbar">
-                <div class="logo">
-                    <a href="../index.php" style="text-decoration: none; color: inherit;">
-                        <i class="fas fa-file-pdf"></i>
-                        <span>Triniva</span>
-                    </a>
-                </div>
-                <ul class="nav-links" id="navLinks">
-                    <li><a href="../index.php">Home</a></li>
-                    <li><a href="../index.php#tools">All Tools</a></li>
-                </ul>
-                <button class="mobile-menu-toggle" id="mobileMenuToggle">
-                    <i class="fas fa-bars"></i>
-                </button>
-            </nav>
-        </div>
-    </header>
 
     <div class="tool-page">
         <div class="container">
@@ -368,98 +437,7 @@ $csrfToken = generateCSRFToken();
         </div>
     </div>
 
-    <footer>
-        <div class="container">
-            <p>&copy; 2024 Triniva. All rights reserved. A <a href="https://freshyportal.com" target="_blank" style="color: #fff; text-decoration: underline;">FreshyPortal</a> Product.</p>
-        </div>
-    </footer>
-
-    <script>
-        const uploadArea = document.getElementById('uploadArea');
-        const fileInput = document.getElementById('pdfFile');
-        const fileInfo = document.getElementById('fileInfo');
-        const fileName = document.getElementById('fileName');
-        const fileSize = document.getElementById('fileSize');
-        const removeFile = document.getElementById('removeFile');
-        const convertBtn = document.getElementById('convertBtn');
-        const convertForm = document.getElementById('convertForm');
-        const loader = document.getElementById('loader');
-        const conversionSettings = document.getElementById('conversionSettings');
-        const customPages = document.getElementById('customPages');
-        const qualitySlider = document.getElementById('qualitySlider');
-        const qualityValue = document.getElementById('qualityValue');
-
-        uploadArea.addEventListener('click', () => fileInput.click());
-
-        uploadArea.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            uploadArea.classList.add('dragover');
-        });
-
-        uploadArea.addEventListener('dragleave', () => {
-            uploadArea.classList.remove('dragover');
-        });
-
-        uploadArea.addEventListener('drop', (e) => {
-            e.preventDefault();
-            uploadArea.classList.remove('dragover');
-            
-            const files = e.dataTransfer.files;
-            if (files.length > 0 && files[0].type === 'application/pdf') {
-                fileInput.files = files;
-                handleFileSelect();
-            }
-        });
-
-        fileInput.addEventListener('change', handleFileSelect);
-
-        removeFile.addEventListener('click', () => {
-            fileInput.value = '';
-            fileInfo.style.display = 'none';
-            uploadArea.style.display = 'block';
-            conversionSettings.style.display = 'none';
-            convertBtn.disabled = true;
-        });
-
-        function handleFileSelect() {
-            const file = fileInput.files[0];
-            if (file) {
-                fileName.textContent = file.name;
-                fileSize.textContent = formatFileSize(file.size);
-                fileInfo.style.display = 'block';
-                uploadArea.style.display = 'none';
-                conversionSettings.style.display = 'block';
-                convertBtn.disabled = false;
-            }
-        }
-
-        function formatFileSize(bytes) {
-            const units = ['B', 'KB', 'MB', 'GB'];
-            let i = 0;
-            while (bytes >= 1024 && i < units.length - 1) {
-                bytes /= 1024;
-                i++;
-            }
-            return bytes.toFixed(2) + ' ' + units[i];
-        }
-
-        // Quality slider
-        qualitySlider.addEventListener('input', function() {
-            qualityValue.textContent = this.value + '%';
-        });
-
-        // Page selection
-        document.querySelectorAll('input[name="pages"]').forEach(radio => {
-            radio.addEventListener('change', function() {
-                customPages.style.display = this.value === 'custom' ? 'block' : 'none';
-            });
-        });
-
-        convertForm.addEventListener('submit', (e) => {
-            convertBtn.disabled = true;
-            loader.style.display = 'block';
-        });
-    </script>
-    <script src="../assets/js/main.js"></script>
-</body>
-</html>
+<?php
+// Include footer
+require_once '../includes/footer.php';
+?>

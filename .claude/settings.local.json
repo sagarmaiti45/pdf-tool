@@ -11,7 +11,8 @@
       "Bash(php -l:*)",
       "Bash(rm:*)",
       "Bash(/opt/homebrew/bin/magick -list configure)",
-      "Bash(touch:*)"
+      "Bash(touch:*)",
+      "Bash(cp:*)"
     ],
     "deny": []
   }

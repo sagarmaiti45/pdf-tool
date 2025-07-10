@@ -1,6 +1,118 @@
 <?php
 require_once '../includes/functions.php';
 
+// Page variables for header
+$page_title = 'Unlock PDF - Remove Restrictions';
+$page_description = 'Remove restrictions from PDF files online. Unlock PDFs to enable printing, copying, and editing without passwords.';
+$page_keywords = 'unlock PDF, remove PDF restrictions, PDF unlocker, enable PDF editing, remove PDF protection, PDF restrictions remover';
+
+// Additional head content
+$additional_head = '<style>
+        .info-box {
+            background: var(--primary-light);
+            border: 1px solid var(--primary-color);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+        }
+        
+        .info-box h4 {
+            color: var(--primary-color);
+            margin-bottom: 0.5rem;
+        }
+        
+        .restrictions-list {
+            list-style: none;
+            padding: 0;
+            margin: 1rem 0;
+        }
+        
+        .restrictions-list li {
+            padding: 0.5rem 0;
+            padding-left: 2rem;
+            position: relative;
+        }
+        
+        .restrictions-list li:before {
+            content: \'\\f00c\';
+            font-family: \'Font Awesome 5 Free\';
+            font-weight: 900;
+            position: absolute;
+            left: 0;
+            color: #4CAF50;
+        }
+    </style>';
+
+// JavaScript to be included
+$additional_scripts = '<script>
+        const uploadArea = document.getElementById(\'uploadArea\');
+        const fileInput = document.getElementById(\'pdfFile\');
+        const fileInfo = document.getElementById(\'fileInfo\');
+        const fileName = document.getElementById(\'fileName\');
+        const fileSize = document.getElementById(\'fileSize\');
+        const removeFile = document.getElementById(\'removeFile\');
+        const unlockBtn = document.getElementById(\'unlockBtn\');
+        const unlockForm = document.getElementById(\'unlockForm\');
+        const loader = document.getElementById(\'loader\');
+
+        uploadArea.addEventListener(\'click\', () => fileInput.click());
+
+        uploadArea.addEventListener(\'dragover\', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add(\'dragover\');
+        });
+
+        uploadArea.addEventListener(\'dragleave\', () => {
+            uploadArea.classList.remove(\'dragover\');
+        });
+
+        uploadArea.addEventListener(\'drop\', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove(\'dragover\');
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0 && files[0].type === \'application/pdf\') {
+                fileInput.files = files;
+                handleFileSelect();
+            }
+        });
+
+        fileInput.addEventListener(\'change\', handleFileSelect);
+
+        removeFile.addEventListener(\'click\', () => {
+            fileInput.value = \'\';
+            fileInfo.style.display = \'none\';
+            uploadArea.style.display = \'block\';
+            unlockBtn.disabled = true;
+        });
+
+        function handleFileSelect() {
+            const file = fileInput.files[0];
+            if (file) {
+                fileName.textContent = file.name;
+                fileSize.textContent = formatFileSize(file.size);
+                fileInfo.style.display = \'block\';
+                uploadArea.style.display = \'none\';
+                unlockBtn.disabled = false;
+            }
+        }
+
+        function formatFileSize(bytes) {
+            const units = [\'B\', \'KB\', \'MB\', \'GB\'];
+            let i = 0;
+            while (bytes >= 1024 && i < units.length - 1) {
+                bytes /= 1024;
+                i++;
+            }
+            return bytes.toFixed(2) + \' \' + units[i];
+        }
+
+        unlockForm.addEventListener(\'submit\', (e) => {
+            unlockBtn.disabled = true;
+            loader.style.display = \'block\';
+        });
+    </script>';
+
 $error = '';
 $success = '';
 $downloadLink = '';
@@ -88,71 +200,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $csrfToken = generateCSRFToken();
+
+// Include header
+require_once '../includes/header.php';
 ?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Unlock PDF - Triniva</title>
-    <link rel="stylesheet" href="../assets/css/style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <style>
-        .info-box {
-            background: var(--primary-light);
-            border: 1px solid var(--primary-color);
-            border-radius: 8px;
-            padding: 1.5rem;
-            margin: 1.5rem 0;
-        }
-        
-        .info-box h4 {
-            color: var(--primary-color);
-            margin-bottom: 0.5rem;
-        }
-        
-        .restrictions-list {
-            list-style: none;
-            padding: 0;
-            margin: 1rem 0;
-        }
-        
-        .restrictions-list li {
-            padding: 0.5rem 0;
-            padding-left: 2rem;
-            position: relative;
-        }
-        
-        .restrictions-list li:before {
-            content: '\f00c';
-            font-family: 'Font Awesome 5 Free';
-            font-weight: 900;
-            position: absolute;
-            left: 0;
-            color: #4CAF50;
-        }
-    </style>
-</head>
-<body>
-    <header>
-        <div class="container">
-            <nav class="navbar">
-                <div class="logo">
-                    <a href="../index.php" style="text-decoration: none; color: inherit;">
-                        <i class="fas fa-file-pdf"></i>
-                        <span>Triniva</span>
-                    </a>
-                </div>
-                <ul class="nav-links" id="navLinks">
-                    <li><a href="../index.php">Home</a></li>
-                    <li><a href="../index.php#tools">All Tools</a></li>
-                </ul>
-                <button class="mobile-menu-toggle" id="mobileMenuToggle">
-                    <i class="fas fa-bars"></i>
-                </button>
-            </nav>
-        </div>
-    </header>
 
     <div class="tool-page">
         <div class="container">
@@ -246,80 +297,7 @@ $csrfToken = generateCSRFToken();
         </div>
     </div>
 
-    <footer>
-        <div class="container">
-            <p>&copy; 2024 Triniva. All rights reserved. A <a href="https://freshyportal.com" target="_blank" style="color: #fff; text-decoration: underline;">FreshyPortal</a> Product.</p>
-        </div>
-    </footer>
-
-    <script>
-        const uploadArea = document.getElementById('uploadArea');
-        const fileInput = document.getElementById('pdfFile');
-        const fileInfo = document.getElementById('fileInfo');
-        const fileName = document.getElementById('fileName');
-        const fileSize = document.getElementById('fileSize');
-        const removeFile = document.getElementById('removeFile');
-        const unlockBtn = document.getElementById('unlockBtn');
-        const unlockForm = document.getElementById('unlockForm');
-        const loader = document.getElementById('loader');
-
-        uploadArea.addEventListener('click', () => fileInput.click());
-
-        uploadArea.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            uploadArea.classList.add('dragover');
-        });
-
-        uploadArea.addEventListener('dragleave', () => {
-            uploadArea.classList.remove('dragover');
-        });
-
-        uploadArea.addEventListener('drop', (e) => {
-            e.preventDefault();
-            uploadArea.classList.remove('dragover');
-            
-            const files = e.dataTransfer.files;
-            if (files.length > 0 && files[0].type === 'application/pdf') {
-                fileInput.files = files;
-                handleFileSelect();
-            }
-        });
-
-        fileInput.addEventListener('change', handleFileSelect);
-
-        removeFile.addEventListener('click', () => {
-            fileInput.value = '';
-            fileInfo.style.display = 'none';
-            uploadArea.style.display = 'block';
-            unlockBtn.disabled = true;
-        });
-
-        function handleFileSelect() {
-            const file = fileInput.files[0];
-            if (file) {
-                fileName.textContent = file.name;
-                fileSize.textContent = formatFileSize(file.size);
-                fileInfo.style.display = 'block';
-                uploadArea.style.display = 'none';
-                unlockBtn.disabled = false;
-            }
-        }
-
-        function formatFileSize(bytes) {
-            const units = ['B', 'KB', 'MB', 'GB'];
-            let i = 0;
-            while (bytes >= 1024 && i < units.length - 1) {
-                bytes /= 1024;
-                i++;
-            }
-            return bytes.toFixed(2) + ' ' + units[i];
-        }
-
-        unlockForm.addEventListener('submit', (e) => {
-            unlockBtn.disabled = true;
-            loader.style.display = 'block';
-        });
-    </script>
-    <script src="../assets/js/main.js"></script>
-</body>
-</html>
+<?php
+// Include footer
+require_once '../includes/footer.php';
+?>
