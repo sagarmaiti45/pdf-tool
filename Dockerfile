@@ -53,4 +53,13 @@ COPY apache-config.conf /etc/apache2/sites-available/000-default.conf
 
 EXPOSE 80
 
-CMD ["apache2-foreground"]
+# Create a startup script to handle Railway's PORT
+RUN echo '#!/bin/bash\n\
+if [ -z "$PORT" ]; then\n\
+  PORT=80\n\
+fi\n\
+sed -i "s/80/$PORT/g" /etc/apache2/sites-available/000-default.conf\n\
+sed -i "s/80/$PORT/g" /etc/apache2/ports.conf\n\
+apache2-foreground' > /start.sh && chmod +x /start.sh
+
+CMD ["/start.sh"]
