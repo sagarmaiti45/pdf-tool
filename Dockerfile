@@ -48,18 +48,11 @@ RUN chown -R www-data:www-data /var/www/html \
 # Configure Apache
 RUN echo "ServerName localhost" >> /etc/apache2/apache2.conf
 
-# Copy custom Apache configuration if needed
-COPY apache-config.conf /etc/apache2/sites-available/000-default.conf
+# Copy and setup entrypoint script
+COPY docker-entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
+# Expose port (Railway will override this)
 EXPOSE 80
 
-# Create a startup script to handle Railway's PORT
-RUN echo '#!/bin/bash\n\
-if [ -z "$PORT" ]; then\n\
-  PORT=80\n\
-fi\n\
-sed -i "s/80/$PORT/g" /etc/apache2/sites-available/000-default.conf\n\
-sed -i "s/80/$PORT/g" /etc/apache2/ports.conf\n\
-apache2-foreground' > /start.sh && chmod +x /start.sh
-
-CMD ["/start.sh"]
+ENTRYPOINT ["docker-entrypoint.sh"]
