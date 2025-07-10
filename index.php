@@ -92,7 +92,7 @@ if (isset($_GET['test'])) {
 
     <section class="section" style="background: var(--surface);">
         <div class="container">
-            <h2 class="text-center mb-8">Why Choose Our PDF Tools?</h2>
+            <h2 class="text-center" style="margin-bottom: 3rem;">Why Choose Our PDF Tools?</h2>
             <div class="features-grid">
                 <div class="feature">
                     <i class="fas fa-shield-alt"></i>
