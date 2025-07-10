@@ -12,7 +12,8 @@
       "Bash(rm:*)",
       "Bash(/opt/homebrew/bin/magick -list configure)",
       "Bash(touch:*)",
-      "Bash(cp:*)"
+      "Bash(cp:*)",
+      "Bash(sed:*)"
     ],
     "deny": []
   }

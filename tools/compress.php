@@ -74,14 +74,14 @@ $additional_scripts = '<script>
         compressForm.addEventListener(\'submit\', (e) => {
             compressBtn.disabled = true;
             loader.style.display = \'block\';
-            progressContainer.style.display = \'block\';
+            // progressContainer.style.display = \'block\';
             
-            let progress = 0;
-            const interval = setInterval(() => {
-                progress += Math.random() * 15;
-                if (progress > 90) progress = 90;
-                document.getElementById(\'progressBar\').style.width = progress + \'%\';
-            }, 300);
+            // let progress = 0;
+            // const interval = setInterval(() => {
+            //     progress += Math.random() * 15;
+            //     if (progress > 90) progress = 90;
+            //     document.getElementById(\'progressBar\').style.width = progress + \'%\';
+            // }, 300);
         });
     </script>';
 
@@ -354,7 +354,7 @@ require_once '../includes/header.php';
                         </div>
                     </div>
 
-                    <div class="progress-container" id="progressContainer">
+                    <div class="progress-container" id="progressContainer" style="display: none;">
                         <div class="progress-bar">
                             <div class="progress-bar-fill" id="progressBar"></div>
                         </div>
