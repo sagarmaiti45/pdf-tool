@@ -1,6 +1,11 @@
 # Enable RewriteEngine
 RewriteEngine On
 
+# Force HTTPS
+RewriteCond %{HTTP:X-Forwarded-Proto} !https
+RewriteCond %{HTTPS} off
+RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
 # Security Headers
 <IfModule mod_headers.c>
     Header set X-Content-Type-Options "nosniff"
@@ -105,7 +110,7 @@ AddDefaultCharset UTF-8
 <IfModule mod_rewrite.c>
     RewriteCond %{HTTP_REFERER} !^$
     RewriteCond %{HTTP_REFERER} !^https?://(www\.)?localhost [NC]
-    RewriteCond %{HTTP_REFERER} !^https?://(www\.)?pdftoolspro\.com [NC]
+    RewriteCond %{HTTP_REFERER} !^https?://(www\.)?triniva\.com [NC]
     RewriteRule \.(pdf)$ - [F,L]
 </IfModule>
 

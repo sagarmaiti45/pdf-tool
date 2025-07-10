@@ -207,7 +207,7 @@ $csrfToken = generateCSRFToken();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Compress PDF - PDF Tools Pro</title>
+    <title>Compress PDF - Triniva</title>
     <link rel="stylesheet" href="../assets/css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
@@ -218,7 +218,7 @@ $csrfToken = generateCSRFToken();
                 <div class="logo">
                     <a href="../index.php" style="text-decoration: none; color: inherit;">
                         <i class="fas fa-file-pdf"></i>
-                        <span>PDF Tools Pro</span>
+                        <span>Triniva</span>
                     </a>
                 </div>
                 <ul class="nav-links" id="navLinks">
@@ -333,7 +333,7 @@ $csrfToken = generateCSRFToken();
         <div class="container">
             <div class="footer-content">
                 <div class="footer-section">
-                    <h3>PDF Tools Pro</h3>
+                    <h3>Triniva</h3>
                     <p>Professional PDF tools that are fast, secure, and completely free.</p>
                 </div>
                 <div class="footer-section">
@@ -354,7 +354,7 @@ $csrfToken = generateCSRFToken();
                 </div>
             </div>
             <div class="footer-bottom">
-                <p>&copy; 2024 PDF Tools Pro. All rights reserved.</p>
+                <p>&copy; 2024 Triniva. All rights reserved. A <a href="https://freshyportal.com" target="_blank" style="color: #fff; text-decoration: underline;">FreshyPortal</a> Product.</p>
             </div>
         </div>
     </footer>

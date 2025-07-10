@@ -552,6 +552,7 @@ footer::before {
 .btn-primary:hover {
     transform: translateY(-2px);
     box-shadow: 0 6px 20px rgba(220, 38, 38, 0.4);
+    color: var(--white);
 }
 
 .btn-primary:hover::before {
@@ -559,7 +560,12 @@ footer::before {
 }
 
 .btn-primary span,
-.btn-primary i {
+.btn-primary i,
+.btn-primary {
+    position: relative;
+}
+
+.btn-primary * {
     position: relative;
     z-index: 1;
 }

@@ -21,10 +21,10 @@ if (ENVIRONMENT === 'development') {
 }
 
 // Site configuration
-define('SITE_NAME', 'PDF Tools Pro');
-define('SITE_URL', 'https://pdftoolspro.com');
-define('SITE_EMAIL', 'support@pdftoolspro.com');
-define('ADMIN_EMAIL', 'admin@pdftoolspro.com');
+define('SITE_NAME', 'Triniva');
+define('SITE_URL', 'https://www.triniva.com');
+define('SITE_EMAIL', 'info@freshyportal.com');
+define('ADMIN_EMAIL', 'info@freshyportal.com');
 
 // File handling configuration
 define('MAX_FILE_SIZE', 50 * 1024 * 1024); // 50MB

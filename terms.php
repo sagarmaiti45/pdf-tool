@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Terms & Conditions - PDF Tools Pro</title>
-    <meta name="description" content="Terms and Conditions for PDF Tools Pro. Read about the terms of use for our free PDF conversion and editing services.">
+    <title>Terms & Conditions - Triniva</title>
+    <meta name="description" content="Terms and Conditions for Triniva. Read about the terms of use for our free PDF conversion and editing services.">
     <link rel="stylesheet" href="assets/css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
@@ -15,7 +15,7 @@
                 <div class="logo">
                     <a href="index.php" style="text-decoration: none; color: inherit;">
                         <i class="fas fa-file-pdf"></i>
-                        <span>PDF Tools Pro</span>
+                        <span>Triniva</span>
                     </a>
                 </div>
                 <ul class="nav-links" id="navLinks">
@@ -36,10 +36,10 @@
         <p class="last-updated">Last updated: <?php echo date('F d, Y'); ?></p>
 
         <h2>1. Agreement to Terms</h2>
-        <p>By accessing and using PDF Tools Pro ("Service"), you agree to be bound by these Terms and Conditions ("Terms"). If you disagree with any part of these terms, you do not have permission to access the Service.</p>
+        <p>By accessing and using Triniva ("Service"), a product of FreshyPortal, you agree to be bound by these Terms and Conditions ("Terms"). If you disagree with any part of these terms, you do not have permission to access the Service.</p>
 
         <h2>2. Description of Service</h2>
-        <p>PDF Tools Pro provides free online tools for PDF manipulation, including but not limited to:</p>
+        <p>Triniva provides free online tools for PDF manipulation, including but not limited to:</p>
         <ul>
             <li>PDF compression</li>
             <li>PDF merging</li>
@@ -64,7 +64,7 @@
 
         <h2>4. Intellectual Property Rights</h2>
         <h3>4.1 Our Content</h3>
-        <p>The Service and its original content, features, and functionality are owned by PDF Tools Pro and are protected by international copyright, trademark, patent, trade secret, and other intellectual property laws.</p>
+        <p>The Service and its original content, features, and functionality are owned by Triniva (a FreshyPortal product) and are protected by international copyright, trademark, patent, trade secret, and other intellectual property laws.</p>
 
         <h3>4.2 Your Content</h3>
         <p>You retain all rights to the files you upload to our Service. By uploading files, you grant us a limited, non-exclusive license to process your files solely for the purpose of providing the requested service. We do not claim ownership of your content.</p>
@@ -139,7 +139,7 @@
         <p>We may terminate or suspend your access to the Service immediately, without prior notice or liability, for any reason whatsoever, including without limitation if you breach the Terms.</p>
 
         <h2>14. Governing Law</h2>
-        <p>These Terms shall be governed and construed in accordance with the laws of the United States, without regard to its conflict of law provisions. Any legal action or proceeding shall be brought exclusively in the federal or state courts located in [Your Jurisdiction].</p>
+        <p>These Terms shall be governed and construed in accordance with the laws of India, without regard to its conflict of law provisions. Any legal action or proceeding shall be brought exclusively in the courts located in West Bengal, India.</p>
 
         <h2>15. Changes to Terms</h2>
         <p>We reserve the right to modify or replace these Terms at any time. If a revision is material, we will provide at least 30 days notice prior to any new terms taking effect. Your continued use of the Service after any changes constitutes acceptance of the new Terms.</p>
@@ -147,7 +147,9 @@
         <h2>16. Contact Information</h2>
         <p>For questions about these Terms, please contact us at:</p>
         <ul>
-            <li><strong>Email:</strong> legal@pdftoolspro.com</li>
+            <li><strong>Email:</strong> info@freshyportal.com</li>
+            <li><strong>Phone:</strong> +91 8101725801</li>
+            <li><strong>Address:</strong> East Medinipur, West Bengal, India - 721151</li>
             <li><strong>Contact Form:</strong> <a href="contact.php">Contact Us</a></li>
         </ul>
 
@@ -155,7 +157,7 @@
         <p>If any provision of these Terms is held to be invalid or unenforceable, the remaining provisions will continue in full force and effect.</p>
 
         <h2>18. Entire Agreement</h2>
-        <p>These Terms, together with our Privacy Policy, constitute the entire agreement between you and PDF Tools Pro regarding the use of the Service.</p>
+        <p>These Terms, together with our Privacy Policy, constitute the entire agreement between you and Triniva regarding the use of the Service.</p>
 
         <h2>19. No Waiver</h2>
         <p>Our failure to enforce any right or provision of these Terms will not be considered a waiver of those rights.</p>
@@ -178,7 +180,7 @@
         <div class="container">
             <div class="footer-content">
                 <div class="footer-section">
-                    <h3>PDF Tools Pro</h3>
+                    <h3>Triniva</h3>
                     <p>Professional PDF tools that are fast, secure, and completely free.</p>
                 </div>
                 <div class="footer-section">
@@ -198,7 +200,7 @@
                 </div>
             </div>
             <div class="footer-bottom">
-                <p>&copy; 2024 PDF Tools Pro. All rights reserved.</p>
+                <p>&copy; 2024 Triniva. All rights reserved. A <a href="https://freshyportal.com" target="_blank" style="color: #fff; text-decoration: underline;">FreshyPortal</a> Product.</p>
             </div>
         </div>
     </footer>

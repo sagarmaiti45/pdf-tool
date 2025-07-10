@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Privacy Policy - PDF Tools Pro</title>
-    <meta name="description" content="Privacy Policy for PDF Tools Pro. Learn how we protect your data and maintain your privacy while using our PDF conversion tools.">
+    <title>Privacy Policy - Triniva</title>
+    <meta name="description" content="Privacy Policy for Triniva. Learn how we protect your data and maintain your privacy while using our PDF conversion tools.">
     <link rel="stylesheet" href="assets/css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
@@ -15,7 +15,7 @@
                 <div class="logo">
                     <a href="index.php" style="text-decoration: none; color: inherit;">
                         <i class="fas fa-file-pdf"></i>
-                        <span>PDF Tools Pro</span>
+                        <span>Triniva</span>
                     </a>
                 </div>
                 <ul class="nav-links" id="navLinks">
@@ -36,7 +36,7 @@
         <p class="last-updated">Last updated: <?php echo date('F d, Y'); ?></p>
 
         <h2>1. Introduction</h2>
-        <p>Welcome to PDF Tools Pro ("we," "our," or "us"). We are committed to protecting your privacy and ensuring the security of your personal information. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our website and services.</p>
+        <p>Welcome to Triniva ("we," "our," or "us"), a FreshyPortal product. We are committed to protecting your privacy and ensuring the security of your personal information. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our website and services.</p>
 
         <h2>2. Information We Collect</h2>
         
@@ -123,7 +123,9 @@
         <h2>11. Contact Us</h2>
         <p>If you have any questions about this Privacy Policy or our privacy practices, please contact us:</p>
         <ul>
-            <li><strong>Email:</strong> privacy@pdftoolspro.com</li>
+            <li><strong>Email:</strong> info@freshyportal.com</li>
+            <li><strong>Phone:</strong> +91 8101725801</li>
+            <li><strong>Address:</strong> East Medinipur, West Bengal, India - 721151</li>
             <li><strong>Contact Form:</strong> <a href="contact.php">Contact Us</a></li>
         </ul>
 
@@ -159,7 +161,7 @@
         <div class="container">
             <div class="footer-content">
                 <div class="footer-section">
-                    <h3>PDF Tools Pro</h3>
+                    <h3>Triniva</h3>
                     <p>Professional PDF tools that are fast, secure, and completely free.</p>
                 </div>
                 <div class="footer-section">
@@ -179,7 +181,7 @@
                 </div>
             </div>
             <div class="footer-bottom">
-                <p>&copy; 2024 PDF Tools Pro. All rights reserved.</p>
+                <p>&copy; 2024 Triniva. All rights reserved. A <a href="https://freshyportal.com" target="_blank" style="color: #fff; text-decoration: underline;">FreshyPortal</a> Product.</p>
             </div>
         </div>
     </footer>

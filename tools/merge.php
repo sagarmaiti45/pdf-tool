@@ -192,7 +192,7 @@ $csrfToken = generateCSRFToken();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Merge PDF - PDF Tools Pro</title>
+    <title>Merge PDF - Triniva</title>
     <link rel="stylesheet" href="../assets/css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
@@ -203,7 +203,7 @@ $csrfToken = generateCSRFToken();
                 <div class="logo">
                     <a href="../index.php" style="text-decoration: none; color: inherit;">
                         <i class="fas fa-file-pdf"></i>
-                        <span>PDF Tools Pro</span>
+                        <span>Triniva</span>
                     </a>
                 </div>
                 <ul class="nav-links">
@@ -463,5 +463,37 @@ $csrfToken = generateCSRFToken();
             fileInput.files = dt.files;
         });
     </script>
+
+    <footer>
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h3>Triniva</h3>
+                    <p>Professional PDF tools that are fast, secure, and completely free.</p>
+                </div>
+                <div class="footer-section">
+                    <h4>Quick Links</h4>
+                    <ul>
+                        <li><a href="../index.php">Home</a></li>
+                        <li><a href="../index.php#tools">All Tools</a></li>
+                        <li><a href="../about.php">About</a></li>
+                        <li><a href="../contact.php">Contact</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Legal</h4>
+                    <ul>
+                        <li><a href="../privacy.php">Privacy Policy</a></li>
+                        <li><a href="../terms.php">Terms & Conditions</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2024 Triniva. All rights reserved. A <a href="https://freshyportal.com" target="_blank" style="color: #fff; text-decoration: underline;">FreshyPortal</a> Product.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="../assets/js/main.js"></script>
 </body>
 </html>

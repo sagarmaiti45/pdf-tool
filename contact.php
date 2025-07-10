@@ -101,8 +101,8 @@ $csrfToken = generateCSRFToken();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Contact Us - PDF Tools Pro</title>
-    <meta name="description" content="Get in touch with PDF Tools Pro. We're here to help with any questions about our PDF conversion and editing tools.">
+    <title>Contact Us - Triniva</title>
+    <meta name="description" content="Get in touch with Triniva. We're here to help with any questions about our PDF conversion and editing tools.">
     <link rel="stylesheet" href="assets/css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
@@ -113,7 +113,7 @@ $csrfToken = generateCSRFToken();
                 <div class="logo">
                     <a href="index.php" style="text-decoration: none; color: inherit;">
                         <i class="fas fa-file-pdf"></i>
-                        <span>PDF Tools Pro</span>
+                        <span>Triniva</span>
                     </a>
                 </div>
                 <ul class="nav-links" id="navLinks">
@@ -148,7 +148,7 @@ $csrfToken = generateCSRFToken();
                             <i class="fas fa-envelope"></i>
                             <div>
                                 <h3>Email</h3>
-                                <p>support@pdftoolspro.com</p>
+                                <p>info@freshyportal.com</p>
                             </div>
                         </div>
                         
@@ -157,6 +157,22 @@ $csrfToken = generateCSRFToken();
                             <div>
                                 <h3>Response Time</h3>
                                 <p>24-48 hours (Mon-Fri)</p>
+                            </div>
+                        </div>
+                        
+                        <div class="contact-item">
+                            <i class="fas fa-phone"></i>
+                            <div>
+                                <h3>Phone</h3>
+                                <p>+91 8101725801</p>
+                            </div>
+                        </div>
+                        
+                        <div class="contact-item">
+                            <i class="fas fa-map-marker-alt"></i>
+                            <div>
+                                <h3>Address</h3>
+                                <p>East Medinipur, West Bengal<br>India - 721151</p>
                             </div>
                         </div>
                         
@@ -172,7 +188,7 @@ $csrfToken = generateCSRFToken();
                     <div class="faq-section">
                         <h3>Frequently Asked Questions</h3>
                         <div class="faq-item">
-                            <h4>Is PDF Tools Pro really free?</h4>
+                            <h4>Is Triniva really free?</h4>
                             <p>Yes! All our tools are 100% free to use with no hidden charges.</p>
                         </div>
                         <div class="faq-item">
@@ -272,7 +288,7 @@ $csrfToken = generateCSRFToken();
         <div class="container">
             <div class="footer-content">
                 <div class="footer-section">
-                    <h3>PDF Tools Pro</h3>
+                    <h3>Triniva</h3>
                     <p>Professional PDF tools that are fast, secure, and completely free.</p>
                 </div>
                 <div class="footer-section">
@@ -292,7 +308,7 @@ $csrfToken = generateCSRFToken();
                 </div>
             </div>
             <div class="footer-bottom">
-                <p>&copy; 2024 PDF Tools Pro. All rights reserved.</p>
+                <p>&copy; 2024 Triniva. All rights reserved. A <a href="https://freshyportal.com" target="_blank" style="color: #fff; text-decoration: underline;">FreshyPortal</a> Product.</p>
             </div>
         </div>
     </footer>

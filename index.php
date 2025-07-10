@@ -1,29 +1,37 @@
+<?php
+// Simple test to ensure PHP is working
+if (isset($_GET['test'])) {
+    die("PHP is working! Path: " . __DIR__);
+}
+
+// Original index.php content
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PDF Tools Pro - Free Online PDF Converter & Editor | Compress, Merge, Convert PDFs</title>
+    <title>Triniva - Free Online PDF Converter & Editor | Compress, Merge, Convert PDFs</title>
     <meta name="description" content="Free online PDF tools to compress, merge, rotate, convert JPG to PDF, PDF to JPG, unlock and protect PDFs. No registration required. Fast, secure and easy to use.">
     <meta name="keywords" content="PDF tools, PDF converter, PDF compressor, merge PDF, PDF editor, JPG to PDF, PDF to JPG, unlock PDF, protect PDF, free PDF tools">
-    <meta name="author" content="PDF Tools Pro">
+    <meta name="author" content="Triniva">
     
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website">
-    <meta property="og:url" content="https://pdftoolspro.com/">
-    <meta property="og:title" content="PDF Tools Pro - Free Online PDF Converter & Editor">
+    <meta property="og:url" content="https://www.triniva.com/">
+    <meta property="og:title" content="Triniva - Free Online PDF Converter & Editor">
     <meta property="og:description" content="Free online PDF tools to compress, merge, rotate, and convert PDFs. No registration required. Fast and secure.">
-    <meta property="og:image" content="https://pdftoolspro.com/assets/images/og-image.png">
+    <meta property="og:image" content="https://www.triniva.com/assets/images/og-image.png">
     
     <!-- Twitter -->
     <meta property="twitter:card" content="summary_large_image">
-    <meta property="twitter:url" content="https://pdftoolspro.com/">
-    <meta property="twitter:title" content="PDF Tools Pro - Free Online PDF Converter & Editor">
+    <meta property="twitter:url" content="https://www.triniva.com/">
+    <meta property="twitter:title" content="Triniva - Free Online PDF Converter & Editor">
     <meta property="twitter:description" content="Free online PDF tools to compress, merge, rotate, and convert PDFs. No registration required.">
-    <meta property="twitter:image" content="https://pdftoolspro.com/assets/images/twitter-image.png">
+    <meta property="twitter:image" content="https://www.triniva.com/assets/images/twitter-image.png">
     
     <!-- Canonical URL -->
-    <link rel="canonical" href="https://pdftoolspro.com/">
+    <link rel="canonical" href="https://www.triniva.com/">
     
     <!-- Favicon -->
     <link rel="icon" type="image/x-icon" href="/favicon.ico">
@@ -40,8 +48,8 @@
     {
         "@context": "https://schema.org",
         "@type": "WebApplication",
-        "name": "PDF Tools Pro",
-        "url": "https://pdftoolspro.com",
+        "name": "Triniva",
+        "url": "https://www.triniva.com",
         "description": "Free online PDF tools to compress, merge, rotate, convert JPG to PDF, PDF to JPG, unlock and protect PDFs",
         "applicationCategory": "UtilitiesApplication",
         "operatingSystem": "Any",
@@ -59,7 +67,7 @@
             <nav class="navbar">
                 <div class="logo">
                     <i class="fas fa-file-pdf"></i>
-                    <span>PDF Tools Pro</span>
+                    <span>Triniva</span>
                 </div>
                 <ul class="nav-links" id="navLinks">
                     <li><a href="#home">Home</a></li>
@@ -183,7 +191,7 @@
         <div class="container">
             <div class="footer-content">
                 <div class="footer-section">
-                    <h3>PDF Tools Pro</h3>
+                    <h3>Triniva</h3>
                     <p>Professional PDF tools that are fast, secure, and completely free.</p>
                 </div>
                 <div class="footer-section">
@@ -203,7 +211,7 @@
                 </div>
             </div>
             <div class="footer-bottom">
-                <p>&copy; 2024 PDF Tools Pro. All rights reserved.</p>
+                <p>&copy; 2024 Triniva. All rights reserved. A <a href="https://freshyportal.com" target="_blank" style="color: #fff; text-decoration: underline;">FreshyPortal</a> Product.</p>
             </div>
         </div>
     </footer>

@@ -3,18 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>About Us - PDF Tools Pro | Free Online PDF Converter</title>
-    <meta name="description" content="Learn about PDF Tools Pro - your trusted partner for free online PDF conversion and editing. Discover our mission, values, and commitment to providing the best PDF tools.">
-    <meta name="keywords" content="about PDF Tools Pro, PDF converter company, online PDF tools, free PDF service">
+    <title>About Us - Triniva | Free Online PDF Converter</title>
+    <meta name="description" content="Learn about Triniva - your trusted partner for free online PDF conversion and editing. Discover our mission, values, and commitment to providing the best PDF tools.">
+    <meta name="keywords" content="about Triniva, PDF converter company, online PDF tools, free PDF service">
     
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website">
-    <meta property="og:url" content="https://pdftoolspro.com/about.php">
-    <meta property="og:title" content="About PDF Tools Pro - Free Online PDF Converter">
+    <meta property="og:url" content="https://www.triniva.com/about.php">
+    <meta property="og:title" content="About Triniva - Free Online PDF Converter">
     <meta property="og:description" content="Learn about our mission to provide the best free PDF tools online. Fast, secure, and easy to use.">
     
     <!-- Canonical URL -->
-    <link rel="canonical" href="https://pdftoolspro.com/about.php">
+    <link rel="canonical" href="https://www.triniva.com/about.php">
     
     <link rel="stylesheet" href="assets/css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -26,7 +26,7 @@
                 <div class="logo">
                     <a href="index.php" style="text-decoration: none; color: inherit;">
                         <i class="fas fa-file-pdf"></i>
-                        <span>PDF Tools Pro</span>
+                        <span>Triniva</span>
                     </a>
                 </div>
                 <ul class="nav-links" id="navLinks">
@@ -44,7 +44,7 @@
 
     <div class="page-header">
         <div class="container">
-            <h1>About PDF Tools Pro</h1>
+            <h1>About Triniva</h1>
             <p>Your trusted partner for all PDF needs since 2024</p>
         </div>
     </div>
@@ -55,7 +55,7 @@
                 <div class="about-content">
                     <h2>Our Mission</h2>
                     <p class="lead">To provide the world's most reliable, fast, and user-friendly PDF tools - completely free and accessible to everyone.</p>
-                    <p>At PDF Tools Pro, we believe that everyone should have access to professional-grade PDF tools without barriers. Whether you're a student, professional, or business owner, our tools are designed to make your PDF tasks simple and efficient.</p>
+                    <p>At Triniva, we believe that everyone should have access to professional-grade PDF tools without barriers. Whether you're a student, professional, or business owner, our tools are designed to make your PDF tasks simple and efficient.</p>
                 </div>
             </div>
 
@@ -121,7 +121,7 @@
             <div class="story-section">
                 <div class="story-content">
                     <h2>Our Story</h2>
-                    <p>PDF Tools Pro was born from a simple frustration - why should people pay expensive subscriptions for basic PDF operations? Our founders, having experienced the pain of dealing with overpriced PDF software, decided to create a solution that would be free for everyone.</p>
+                    <p>Triniva was born from a simple frustration - why should people pay expensive subscriptions for basic PDF operations? Our founders at FreshyPortal, having experienced the pain of dealing with overpriced PDF software, decided to create a solution that would be free for everyone.</p>
                     <p>Starting in 2024, we've grown from a simple PDF compressor to a comprehensive suite of PDF tools. Our commitment remains unchanged: provide the best PDF tools, keep them free, and respect user privacy above all.</p>
                     <p>Today, we're proud to serve millions of users worldwide, processing millions of documents every month while maintaining our core values of privacy, speed, and accessibility.</p>
                 </div>
@@ -200,7 +200,7 @@
         <div class="container">
             <div class="footer-content">
                 <div class="footer-section">
-                    <h3>PDF Tools Pro</h3>
+                    <h3>Triniva</h3>
                     <p>Professional PDF tools that are fast, secure, and completely free.</p>
                 </div>
                 <div class="footer-section">
@@ -220,7 +220,7 @@
                 </div>
             </div>
             <div class="footer-bottom">
-                <p>&copy; 2024 PDF Tools Pro. All rights reserved.</p>
+                <p>&copy; 2024 Triniva. All rights reserved. A <a href="https://freshyportal.com" target="_blank" style="color: #fff; text-decoration: underline;">FreshyPortal</a> Product.</p>
             </div>
         </div>
     </footer>
