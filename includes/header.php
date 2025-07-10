@@ -52,14 +52,14 @@ $is_tool_page = strpos($_SERVER['REQUEST_URI'], '/tools/') !== false;
         <div class="container">
             <nav class="navbar">
                 <div class="logo">
-                    <a href="<?php echo $is_tool_page ? '../' : ''; ?>index.php" style="text-decoration: none; color: inherit;">
+                    <a href="<?php echo $is_tool_page ? '../' : '/'; ?>" style="text-decoration: none; color: inherit;">
                         <i class="fas fa-file-pdf"></i>
                         <span><?php echo SITE_NAME; ?></span>
                     </a>
                 </div>
                 <ul class="nav-links" id="navLinks">
-                    <li><a href="<?php echo $is_tool_page ? '../' : ''; ?>index.php" <?php echo $current_page == 'index.php' ? 'class="active"' : ''; ?>>Home</a></li>
-                    <li><a href="<?php echo $is_tool_page ? '../' : ''; ?>index.php#tools" <?php echo $is_tool_page ? 'class="active"' : ''; ?>>Tools</a></li>
+                    <li><a href="<?php echo $is_tool_page ? '../' : '/'; ?>" <?php echo $current_page == 'index.php' ? 'class="active"' : ''; ?>>Home</a></li>
+                    <li><a href="<?php echo $is_tool_page ? '../' : '/'; ?>#tools" <?php echo $is_tool_page ? 'class="active"' : ''; ?>>Tools</a></li>
                     <li><a href="<?php echo $is_tool_page ? '../' : ''; ?>about.php" <?php echo $current_page == 'about.php' ? 'class="active"' : ''; ?>>About</a></li>
                     <li><a href="<?php echo $is_tool_page ? '../' : ''; ?>contact.php" <?php echo $current_page == 'contact.php' ? 'class="active"' : ''; ?>>Contact</a></li>
                 </ul>

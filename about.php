@@ -1,49 +1,49 @@
 <?php
-// Page variables
+// Set page variables
 $page_title = 'About Us';
 $page_description = 'Learn about Triniva - your trusted partner for free online PDF conversion and editing. Discover our mission, values, and commitment to providing the best PDF tools.';
 $page_keywords = 'about Triniva, PDF converter company, online PDF tools, free PDF service';
 
-// Additional scripts for this page
-$additional_scripts = '
-<script>
-    // Animate statistics on scroll
-    const observerOptions = {
-        threshold: 0.5,
-        rootMargin: "0px"
-    };
+// Additional scripts for animation
+$additional_scripts = <<<HTML
+    <script>
+        // Animate statistics on scroll
+        const observerOptions = {
+            threshold: 0.5,
+            rootMargin: '0px'
+        };
 
-    const observer = new IntersectionObserver(function(entries) {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                const statCards = entry.target.querySelectorAll(".stat-card h3");
-                statCards.forEach(stat => {
-                    const target = stat.textContent;
-                    const number = parseInt(target.replace(/[^0-9]/g, ""));
-                    const suffix = target.replace(/[0-9]/g, "");
-                    let current = 0;
-                    const increment = number / 50;
-                    
-                    const timer = setInterval(() => {
-                        current += increment;
-                        if (current >= number) {
-                            current = number;
-                            clearInterval(timer);
-                        }
-                        stat.textContent = Math.floor(current) + suffix;
-                    }, 30);
-                });
-                observer.unobserve(entry.target);
-            }
-        });
-    }, observerOptions);
+        const observer = new IntersectionObserver(function(entries) {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const statCards = entry.target.querySelectorAll('.stat-card h3');
+                    statCards.forEach(stat => {
+                        const target = stat.textContent;
+                        const number = parseInt(target.replace(/[^0-9]/g, ''));
+                        const suffix = target.replace(/[0-9]/g, '');
+                        let current = 0;
+                        const increment = number / 50;
+                        
+                        const timer = setInterval(() => {
+                            current += increment;
+                            if (current >= number) {
+                                current = number;
+                                clearInterval(timer);
+                            }
+                            stat.textContent = Math.floor(current) + suffix;
+                        }, 30);
+                    });
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, observerOptions);
 
-    const statsSection = document.querySelector(".stats-grid");
-    if (statsSection) {
-        observer.observe(statsSection);
-    }
-</script>
-';
+        const statsSection = document.querySelector('.stats-grid');
+        if (statsSection) {
+            observer.observe(statsSection);
+        }
+    </script>
+HTML;
 
 // Include header
 require_once 'includes/header.php';
@@ -155,49 +155,64 @@ require_once 'includes/header.php';
                     </div>
                     <div class="tech-item">
                         <i class="fas fa-shield-alt"></i>
-                        <h4>SSL/TLS</h4>
-                        <p>End-to-end encryption</p>
+                        <h4>Security</h4>
+                        <p>Enterprise-grade protection</p>
                     </div>
                 </div>
             </div>
 
-            <div class="features-highlight">
-                <h2>Why Choose PDF Tools Pro?</h2>
-                <div class="features-comparison">
-                    <div class="comparison-card our-features">
-                        <h3><i class="fas fa-check-circle"></i> PDF Tools Pro</h3>
-                        <ul>
-                            <li><i class="fas fa-check"></i> Completely free forever</li>
-                            <li><i class="fas fa-check"></i> No registration required</li>
-                            <li><i class="fas fa-check"></i> No watermarks on PDFs</li>
-                            <li><i class="fas fa-check"></i> Unlimited file processing</li>
-                            <li><i class="fas fa-check"></i> Files deleted after 1 hour</li>
-                            <li><i class="fas fa-check"></i> Works on all devices</li>
-                            <li><i class="fas fa-check"></i> Fast processing speed</li>
-                            <li><i class="fas fa-check"></i> Secure encryption</li>
-                        </ul>
-                    </div>
-                    <div class="comparison-card others">
-                        <h3><i class="fas fa-times-circle"></i> Other Services</h3>
-                        <ul>
-                            <li><i class="fas fa-times"></i> Expensive subscriptions</li>
-                            <li><i class="fas fa-times"></i> Account required</li>
-                            <li><i class="fas fa-times"></i> Watermarks on free tier</li>
-                            <li><i class="fas fa-times"></i> Daily limits</li>
-                            <li><i class="fas fa-times"></i> Store your files</li>
-                            <li><i class="fas fa-times"></i> Desktop only</li>
-                            <li><i class="fas fa-times"></i> Slow processing</li>
-                            <li><i class="fas fa-times"></i> Privacy concerns</li>
-                        </ul>
-                    </div>
+            <div class="comparison-section">
+                <h2>Why Choose Triniva?</h2>
+                <div class="comparison-table">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Feature</th>
+                                <th>Triniva</th>
+                                <th>Others</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Price</td>
+                                <td><i class="fas fa-check text-success"></i> Free Forever</td>
+                                <td><i class="fas fa-times text-danger"></i> $9-50/month</td>
+                            </tr>
+                            <tr>
+                                <td>Registration</td>
+                                <td><i class="fas fa-check text-success"></i> Not Required</td>
+                                <td><i class="fas fa-times text-danger"></i> Email Required</td>
+                            </tr>
+                            <tr>
+                                <td>File Size Limit</td>
+                                <td><i class="fas fa-check text-success"></i> 50MB</td>
+                                <td><i class="fas fa-times text-danger"></i> 5-25MB</td>
+                            </tr>
+                            <tr>
+                                <td>Processing Speed</td>
+                                <td><i class="fas fa-check text-success"></i> Instant</td>
+                                <td><i class="fas fa-times text-danger"></i> Queue System</td>
+                            </tr>
+                            <tr>
+                                <td>Data Privacy</td>
+                                <td><i class="fas fa-check text-success"></i> Auto Delete</td>
+                                <td><i class="fas fa-times text-danger"></i> Stored on Servers</td>
+                            </tr>
+                            <tr>
+                                <td>Watermarks</td>
+                                <td><i class="fas fa-check text-success"></i> None</td>
+                                <td><i class="fas fa-times text-danger"></i> Free Plans Have</td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
 
             <div class="cta-section">
                 <h2>Ready to Get Started?</h2>
-                <p>Join millions of users who trust PDF Tools Pro for their document needs.</p>
-                <a href="index.php#tools" class="btn btn-primary btn-large">
-                    <i class="fas fa-tools"></i> Explore Our Tools
+                <p>Join millions of users who trust Triniva for their PDF needs.</p>
+                <a href="/#tools" class="btn btn-primary btn-large">
+                    <i class="fas fa-rocket"></i> Try Our Tools Now
                 </a>
             </div>
         </div>
