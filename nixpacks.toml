@@ -1,0 +1,8 @@
+[phases.setup]
+nixPkgs = ["php81", "php81Packages.composer", "ghostscript", "imagemagick"]
+
+[phases.build]
+cmds = ["composer install --no-dev", "mkdir -p uploads temp logs", "chmod 777 uploads temp logs"]
+
+[start]
+cmd = "php -S 0.0.0.0:$PORT"

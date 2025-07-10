@@ -1,0 +1,14 @@
+{
+  "name": "pdf-tools/pdf-tools",
+  "description": "PDF Tools Pro",
+  "type": "project",
+  "require": {
+    "php": "^7.4 || ^8.0",
+    "ext-gd": "*"
+  },
+  "config": {
+    "platform": {
+      "php": "8.1"
+    }
+  }
+}
