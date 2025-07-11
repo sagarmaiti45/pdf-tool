@@ -52,17 +52,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Send email using the configured email function
         if (!sendContactEmail($name, $email, $subject, $message)) {
             // If email fails, still log the submission
-            $contactLog = dirname(__DIR__) . '/pdf/logs/contact_submissions.log';
+            $contactLog = __DIR__ . '/logs/contact_submissions.log';
             $logEntry = date('Y-m-d H:i:s') . " | $name | $email | $subject | " . substr($message, 0, 100) . "... | EMAIL_FAILED\n";
-            file_put_contents($contactLog, $logEntry, FILE_APPEND | LOCK_EX);
+            @file_put_contents($contactLog, $logEntry, FILE_APPEND | LOCK_EX);
             
             throw new RuntimeException('Failed to send email. We have logged your message and will contact you soon.');
         }
         
         // Log successful submission
-        $contactLog = dirname(__DIR__) . '/pdf/logs/contact_submissions.log';
+        $contactLog = __DIR__ . '/logs/contact_submissions.log';
         $logEntry = date('Y-m-d H:i:s') . " | $name | $email | $subject | " . substr($message, 0, 100) . "... | EMAIL_SENT\n";
-        file_put_contents($contactLog, $logEntry, FILE_APPEND | LOCK_EX);
+        @file_put_contents($contactLog, $logEntry, FILE_APPEND | LOCK_EX);
         
         // Update rate limiting
         $_SESSION[$rateLimitKey] = $attempts + 1;
