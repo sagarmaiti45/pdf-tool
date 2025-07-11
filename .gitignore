@@ -17,7 +17,6 @@ Thumbs.db
 # Environment files
 .env
 config.local.php
-config/email.php
 
 # Keep directories but not contents
 *.log
