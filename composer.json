@@ -4,7 +4,8 @@
   "type": "project",
   "require": {
     "php": "^7.4 || ^8.0",
-    "ext-gd": "*"
+    "ext-gd": "*",
+    "phpmailer/phpmailer": "^6.8"
   },
   "config": {
     "platform": {

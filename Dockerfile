@@ -41,8 +41,14 @@ RUN echo "upload_max_filesize = 50M" > /usr/local/etc/php/conf.d/uploads.ini \
     && echo "max_execution_time = 300" >> /usr/local/etc/php/conf.d/uploads.ini \
     && echo "memory_limit = 256M" >> /usr/local/etc/php/conf.d/uploads.ini
 
+# Install Composer
+RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+
 # Copy application files
 COPY . /var/www/html/
+
+# Install PHP dependencies
+RUN cd /var/www/html && composer install --no-dev --optimize-autoloader
 
 # Create necessary directories
 RUN mkdir -p /var/www/html/uploads \

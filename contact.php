@@ -1,5 +1,6 @@
 <?php
 require_once 'includes/functions.php';
+require_once 'config/email.php';
 
 $error = '';
 $success = '';
@@ -48,31 +49,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             throw new RuntimeException('Too many contact attempts. Please try again later.');
         }
         
-        // Prepare email (in production, implement actual email sending)
-        $to = SITE_EMAIL;
-        $emailSubject = "[Contact Form] " . $subject;
-        $emailBody = "Name: $name\n";
-        $emailBody .= "Email: $email\n\n";
-        $emailBody .= "Message:\n$message";
+        // Send email using the configured email function
+        if (!sendContactEmail($name, $email, $subject, $message)) {
+            // If email fails, still log the submission
+            $contactLog = dirname(__DIR__) . '/pdf/logs/contact_submissions.log';
+            $logEntry = date('Y-m-d H:i:s') . " | $name | $email | $subject | " . substr($message, 0, 100) . "... | EMAIL_FAILED\n";
+            file_put_contents($contactLog, $logEntry, FILE_APPEND | LOCK_EX);
+            
+            throw new RuntimeException('Failed to send email. We have logged your message and will contact you soon.');
+        }
         
-        $headers = "From: $email\r\n";
-        $headers .= "Reply-To: $email\r\n";
-        $headers .= "X-Mailer: PHP/" . phpversion();
-        
-        // Store contact form submission (for demo purposes, in production use database)
+        // Log successful submission
         $contactLog = dirname(__DIR__) . '/pdf/logs/contact_submissions.log';
-        $logEntry = date('Y-m-d H:i:s') . " | $name | $email | $subject | " . substr($message, 0, 100) . "...\n";
+        $logEntry = date('Y-m-d H:i:s') . " | $name | $email | $subject | " . substr($message, 0, 100) . "... | EMAIL_SENT\n";
         file_put_contents($contactLog, $logEntry, FILE_APPEND | LOCK_EX);
         
         // Update rate limiting
         $_SESSION[$rateLimitKey] = $attempts + 1;
         $_SESSION[$rateLimitKey . '_time'] = time();
-        
-        // For demo purposes, we'll just log the submission
-        // In production, use mail() or a proper email service
-        // if (!mail($to, $emailSubject, $emailBody, $headers)) {
-        //     throw new RuntimeException('Failed to send email. Please try again later.');
-        // }
         
         $success = 'Thank you for your message! We\'ll get back to you within 24-48 hours.';
         
