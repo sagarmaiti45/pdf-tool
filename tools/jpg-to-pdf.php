@@ -63,6 +63,10 @@ $additional_head = '<style>
             gap: 1rem;
             margin: 1.5rem 0;
         }
+        
+        #imagePreview {
+            margin-bottom: 2rem;
+        }
     </style>';
 
 // JavaScript to be included
@@ -213,6 +217,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $gsPath = GS_PATH;
         $magickPath = MAGICK_PATH;
         
+        // Handle "original" page size separately
+        $keepOriginalSize = ($pageSize === 'original');
+        
         // Page size dimensions in pixels at 72 DPI
         $pageSizeMap = [
             'a4' => '595x842',
@@ -240,29 +247,51 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $pageSizeForConvert = $height . 'x' . $width;
             }
             
-            // Adjust command based on ImageMagick version
-            if (strpos($magickPath, 'convert') !== false) {
-                // Using 'convert' command directly (Docker/Linux)
-                $command = sprintf(
-                    'MAGICK_TMPDIR=%s %s %s -resize %s\> -extent %s -gravity center -background white -quality 90 %s 2>&1',
-                    escapeshellarg($gsTempDir),
-                    $magickPath,
-                    $fileList,
-                    $pageSizeForConvert,
-                    $pageSizeForConvert,
-                    escapeshellarg($outputFile)
-                );
+            // Adjust command based on ImageMagick version and page size
+            if ($keepOriginalSize) {
+                // Keep original image sizes
+                if (strpos($magickPath, 'convert') !== false) {
+                    $command = sprintf(
+                        'MAGICK_TMPDIR=%s %s %s -quality 90 %s 2>&1',
+                        escapeshellarg($gsTempDir),
+                        $magickPath,
+                        $fileList,
+                        escapeshellarg($outputFile)
+                    );
+                } else {
+                    $command = sprintf(
+                        'MAGICK_TMPDIR=%s %s convert %s -quality 90 %s 2>&1',
+                        escapeshellarg($gsTempDir),
+                        $magickPath,
+                        $fileList,
+                        escapeshellarg($outputFile)
+                    );
+                }
             } else {
-                // Using 'magick' command (newer versions)
-                $command = sprintf(
-                    'MAGICK_TMPDIR=%s %s convert %s -resize %s\> -extent %s -gravity center -background white -quality 90 %s 2>&1',
-                    escapeshellarg($gsTempDir),
-                    $magickPath,
-                    $fileList,
-                    $pageSizeForConvert,
-                    $pageSizeForConvert,
-                    escapeshellarg($outputFile)
-                );
+                // Resize to specific page size
+                if (strpos($magickPath, 'convert') !== false) {
+                    // Using 'convert' command directly (Docker/Linux)
+                    $command = sprintf(
+                        'MAGICK_TMPDIR=%s %s %s -resize %s\> -extent %s -gravity center -background white -quality 90 %s 2>&1',
+                        escapeshellarg($gsTempDir),
+                        $magickPath,
+                        $fileList,
+                        $pageSizeForConvert,
+                        $pageSizeForConvert,
+                        escapeshellarg($outputFile)
+                    );
+                } else {
+                    // Using 'magick' command (newer versions)
+                    $command = sprintf(
+                        'MAGICK_TMPDIR=%s %s convert %s -resize %s\> -extent %s -gravity center -background white -quality 90 %s 2>&1',
+                        escapeshellarg($gsTempDir),
+                        $magickPath,
+                        $fileList,
+                        $pageSizeForConvert,
+                        $pageSizeForConvert,
+                        escapeshellarg($outputFile)
+                    );
+                }
             }
             
             exec($command, $output, $returnCode);
@@ -275,26 +304,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $tempPdf = $gsTempDir . 'page_' . $index . '.pdf';
                     
                     // Convert image to PDF using ImageMagick
-                    if (strpos($magickPath, 'convert') !== false) {
-                        // Using 'convert' command directly (Docker/Linux)
-                        $imgCommand = sprintf(
-                            'MAGICK_TMPDIR=%s %s %s -page %s -gravity center -background white %s 2>&1',
-                            escapeshellarg($gsTempDir),
-                            $magickPath,
-                            escapeshellarg($imageFile),
-                            $pageSizeForConvert,
-                            escapeshellarg($tempPdf)
-                        );
+                    if ($keepOriginalSize) {
+                        // Keep original size
+                        if (strpos($magickPath, 'convert') !== false) {
+                            $imgCommand = sprintf(
+                                'MAGICK_TMPDIR=%s %s %s %s 2>&1',
+                                escapeshellarg($gsTempDir),
+                                $magickPath,
+                                escapeshellarg($imageFile),
+                                escapeshellarg($tempPdf)
+                            );
+                        } else {
+                            $imgCommand = sprintf(
+                                'MAGICK_TMPDIR=%s %s convert %s %s 2>&1',
+                                escapeshellarg($gsTempDir),
+                                $magickPath,
+                                escapeshellarg($imageFile),
+                                escapeshellarg($tempPdf)
+                            );
+                        }
                     } else {
-                        // Using 'magick' command (newer versions)
-                        $imgCommand = sprintf(
-                            'MAGICK_TMPDIR=%s %s convert %s -page %s -gravity center -background white %s 2>&1',
-                            escapeshellarg($gsTempDir),
-                            $magickPath,
-                            escapeshellarg($imageFile),
-                            $pageSizeForConvert,
-                            escapeshellarg($tempPdf)
-                        );
+                        // Resize to specific page size
+                        if (strpos($magickPath, 'convert') !== false) {
+                            // Using 'convert' command directly (Docker/Linux)
+                            $imgCommand = sprintf(
+                                'MAGICK_TMPDIR=%s %s %s -page %s -gravity center -background white %s 2>&1',
+                                escapeshellarg($gsTempDir),
+                                $magickPath,
+                                escapeshellarg($imageFile),
+                                $pageSizeForConvert,
+                                escapeshellarg($tempPdf)
+                            );
+                        } else {
+                            // Using 'magick' command (newer versions)
+                            $imgCommand = sprintf(
+                                'MAGICK_TMPDIR=%s %s convert %s -page %s -gravity center -background white %s 2>&1',
+                                escapeshellarg($gsTempDir),
+                                $magickPath,
+                                escapeshellarg($imageFile),
+                                $pageSizeForConvert,
+                                escapeshellarg($tempPdf)
+                            );
+                        }
                     }
                     
                     exec($imgCommand, $imgOutput, $imgReturn);
@@ -427,12 +478,13 @@ require_once '../includes/header.php';
                         </button>
                     </div>
 
-                    <div id="pdfSettings" style="display: none;">
+                    <div id="pdfSettings" style="display: none; margin-top: 2rem;">
                         <h3>PDF Settings:</h3>
                         <div class="settings-grid">
                             <div class="form-group">
                                 <label class="form-label">Page Size</label>
                                 <select name="page_size" class="form-control">
+                                    <option value="original">Keep Original Size</option>
                                     <option value="a4" selected>A4</option>
                                     <option value="letter">Letter</option>
                                     <option value="legal">Legal</option>
