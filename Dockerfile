@@ -21,6 +21,17 @@ RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
 RUN pecl install imagick \
     && docker-php-ext-enable imagick
 
+# Fix ImageMagick security policy to allow PDF operations
+RUN sed -i '/<policy domain="coder" rights="none" pattern="PDF" \/>/d' /etc/ImageMagick-6/policy.xml || true \
+    && sed -i '/<policy domain="coder" rights="none" pattern="PS" \/>/d' /etc/ImageMagick-6/policy.xml || true \
+    && sed -i '/<policy domain="coder" rights="none" pattern="EPS" \/>/d' /etc/ImageMagick-6/policy.xml || true \
+    && sed -i '/<policy domain="coder" rights="none" pattern="XPS" \/>/d' /etc/ImageMagick-6/policy.xml || true
+
+# Also check for policy.xml in other possible locations
+RUN if [ -f /etc/ImageMagick/policy.xml ]; then \
+        sed -i '/<policy domain="coder" rights="none" pattern="PDF" \/>/d' /etc/ImageMagick/policy.xml; \
+    fi
+
 # Enable Apache modules
 RUN a2enmod rewrite headers
 
