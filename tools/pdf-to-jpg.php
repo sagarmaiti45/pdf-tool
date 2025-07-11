@@ -1,5 +1,6 @@
 <?php
 require_once '../includes/functions.php';
+require_once '../config/paths.php';
 
 // Page variables for header
 $page_title = 'PDF to JPG - Extract Images from PDF';
@@ -174,17 +175,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $outputDir = TEMP_DIR . uniqid('pdf_images_') . '/';
         mkdir($outputDir, 0777, true);
         
-        // Configure ImageMagick with Ghostscript path
-        $magickPath = '/opt/homebrew/bin/magick';
-        if (!file_exists($magickPath)) {
-            $magickPath = 'magick';
-        }
-        
-        // Set Ghostscript path for ImageMagick
-        $gsPath = '/opt/homebrew/bin/gs';
-        if (!file_exists($gsPath)) {
-            $gsPath = 'gs';
-        }
+        // Use configured paths
+        $magickPath = MAGICK_PATH;
+        $gsPath = GS_PATH;
         putenv("GS_PROG=$gsPath");
         
         // Configure ImageMagick temporary directory

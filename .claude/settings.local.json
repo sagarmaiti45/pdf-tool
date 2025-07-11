@@ -13,7 +13,10 @@
       "Bash(/opt/homebrew/bin/magick -list configure)",
       "Bash(touch:*)",
       "Bash(cp:*)",
-      "Bash(sed:*)"
+      "Bash(sed:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)"
     ],
     "deny": []
   }

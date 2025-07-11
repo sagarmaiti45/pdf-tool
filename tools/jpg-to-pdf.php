@@ -1,5 +1,6 @@
 <?php
 require_once '../includes/functions.php';
+require_once '../config/paths.php';
 
 // Page variables for header
 $page_title = 'JPG to PDF - Convert Images to PDF';
@@ -208,16 +209,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $pageSize = $_POST['page_size'] ?? 'a4';
         $orientation = $_POST['orientation'] ?? 'portrait';
         
-        // Check for available tools
-        $gsPath = '/opt/homebrew/bin/gs';
-        if (!file_exists($gsPath)) {
-            $gsPath = 'gs';
-        }
-        
-        $magickPath = '/opt/homebrew/bin/magick';
-        if (!file_exists($magickPath)) {
-            $magickPath = 'magick';
-        }
+        // Use configured paths
+        $gsPath = GS_PATH;
+        $magickPath = MAGICK_PATH;
         
         // Page size dimensions in pixels at 72 DPI
         $pageSizeMap = [
@@ -246,15 +240,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $pageSizeForConvert = $height . 'x' . $width;
             }
             
-            $command = sprintf(
-                'MAGICK_TMPDIR=%s %s convert %s -resize %s\> -extent %s -gravity center -background white -quality 90 %s 2>&1',
-                escapeshellarg($gsTempDir),
-                $magickPath,
-                $fileList,
-                $pageSizeForConvert,
-                $pageSizeForConvert,
-                escapeshellarg($outputFile)
-            );
+            // Adjust command based on ImageMagick version
+            if (strpos($magickPath, 'convert') !== false) {
+                // Using 'convert' command directly (Docker/Linux)
+                $command = sprintf(
+                    'MAGICK_TMPDIR=%s %s %s -resize %s\> -extent %s -gravity center -background white -quality 90 %s 2>&1',
+                    escapeshellarg($gsTempDir),
+                    $magickPath,
+                    $fileList,
+                    $pageSizeForConvert,
+                    $pageSizeForConvert,
+                    escapeshellarg($outputFile)
+                );
+            } else {
+                // Using 'magick' command (newer versions)
+                $command = sprintf(
+                    'MAGICK_TMPDIR=%s %s convert %s -resize %s\> -extent %s -gravity center -background white -quality 90 %s 2>&1',
+                    escapeshellarg($gsTempDir),
+                    $magickPath,
+                    $fileList,
+                    $pageSizeForConvert,
+                    $pageSizeForConvert,
+                    escapeshellarg($outputFile)
+                );
+            }
             
             exec($command, $output, $returnCode);
             
@@ -266,14 +275,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $tempPdf = $gsTempDir . 'page_' . $index . '.pdf';
                     
                     // Convert image to PDF using ImageMagick
-                    $imgCommand = sprintf(
-                        'MAGICK_TMPDIR=%s %s convert %s -page %s -gravity center -background white %s 2>&1',
-                        escapeshellarg($gsTempDir),
-                        $magickPath,
-                        escapeshellarg($imageFile),
-                        $pageSizeForConvert,
-                        escapeshellarg($tempPdf)
-                    );
+                    if (strpos($magickPath, 'convert') !== false) {
+                        // Using 'convert' command directly (Docker/Linux)
+                        $imgCommand = sprintf(
+                            'MAGICK_TMPDIR=%s %s %s -page %s -gravity center -background white %s 2>&1',
+                            escapeshellarg($gsTempDir),
+                            $magickPath,
+                            escapeshellarg($imageFile),
+                            $pageSizeForConvert,
+                            escapeshellarg($tempPdf)
+                        );
+                    } else {
+                        // Using 'magick' command (newer versions)
+                        $imgCommand = sprintf(
+                            'MAGICK_TMPDIR=%s %s convert %s -page %s -gravity center -background white %s 2>&1',
+                            escapeshellarg($gsTempDir),
+                            $magickPath,
+                            escapeshellarg($imageFile),
+                            $pageSizeForConvert,
+                            escapeshellarg($tempPdf)
+                        );
+                    }
                     
                     exec($imgCommand, $imgOutput, $imgReturn);
                     

@@ -1,6 +1,7 @@
 <?php
 require_once '../includes/functions.php';
 require_once '../includes/normalize-page.php';
+require_once '../config/paths.php';
 
 // Page variables for header
 $page_title = 'Merge PDF - Combine Multiple Files';
@@ -201,10 +202,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $outputFile = TEMP_DIR . generateUniqueFileName('pdf');
         
         // Build Ghostscript command to merge PDFs
-        $gsPath = '/opt/homebrew/bin/gs';
-        if (!file_exists($gsPath)) {
-            $gsPath = 'gs';
-        }
+        $gsPath = GS_PATH;
         
         $gsTempDir = TEMP_DIR;
         putenv("TMPDIR=$gsTempDir");
@@ -242,10 +240,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             };
             
             // Use ImageMagick for better control
-            $magickPath = '/opt/homebrew/bin/magick';
-            if (!file_exists($magickPath)) {
-                $magickPath = 'magick';
-            }
+            $magickPath = MAGICK_PATH;
             
             foreach ($uploadedFiles as $index => $pdfFile) {
                 $normalizedFile = TEMP_DIR . 'normalized_' . $index . '_' . basename($pdfFile);
