@@ -87,7 +87,7 @@ require_once 'includes/header.php';
         </ul>
 
         <h2>10. Indemnification</h2>
-        <p>You agree to indemnify, defend, and hold harmless PDF Tools Pro, its officers, directors, employees, agents, and affiliates from and against any claims, liabilities, damages, losses, and expenses arising out of or in any way connected with:</p>
+        <p>You agree to indemnify, defend, and hold harmless Triniva, its officers, directors, employees, agents, and affiliates from and against any claims, liabilities, damages, losses, and expenses arising out of or in any way connected with:</p>
         <ul>
             <li>Your access to or use of the Service</li>
             <li>Your violation of these Terms</li>

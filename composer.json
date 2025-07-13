@@ -1,6 +1,6 @@
 {
   "name": "pdf-tools/pdf-tools",
-  "description": "PDF Tools Pro",
+  "description": "Triniva - Professional PDF Tools Suite",
   "type": "project",
   "require": {
     "php": "^7.4 || ^8.0",

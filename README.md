@@ -1,4 +1,4 @@
-# PDF Tools Pro
+# Triniva - PDF Tools
 
 A professional, production-ready web application for PDF manipulation with a modern, mobile-responsive interface.
 
@@ -201,9 +201,9 @@ This project is licensed under the MIT License.
 ### Support
 
 For issues or questions:
-- Email: support@pdftoolspro.com
-- Documentation: https://pdftoolspro.com/docs
-- Issues: https://github.com/yourusername/pdf-tools-pro/issues
+- Email: support@triniva.com
+- Documentation: https://triniva.com/docs
+- Issues: https://github.com/sagarmaiti45/pdf-tool/issues
 
 ---
 

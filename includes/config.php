@@ -1,6 +1,6 @@
 <?php
 /**
- * Configuration file for PDF Tools Pro
+ * Configuration file for Triniva
  * 
  * This file contains all the configuration settings for the application.
  * Update these values based on your production environment.
@@ -73,7 +73,7 @@ define('CACHE_LIFETIME', 3600); // 1 hour
 // Database configuration (if needed in future)
 define('DB_ENABLED', false);
 define('DB_HOST', 'localhost');
-define('DB_NAME', 'pdftoolspro');
+define('DB_NAME', 'triniva');
 define('DB_USER', 'root');
 define('DB_PASS', '');
 

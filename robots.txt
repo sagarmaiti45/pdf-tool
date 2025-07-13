@@ -6,7 +6,7 @@ Disallow: /logs/
 Disallow: /includes/
 
 # Sitemap
-Sitemap: https://pdftoolspro.com/sitemap.xml
+Sitemap: https://triniva.com/sitemap.xml
 
 # Crawl-delay
 Crawl-delay: 1
