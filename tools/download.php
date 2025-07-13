@@ -1,5 +1,4 @@
 <?php
-session_start();
 require_once '../includes/functions.php';
 
 // Check if download file is set in session
