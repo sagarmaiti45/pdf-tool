@@ -10,8 +10,6 @@ A professional, production-ready web application for PDF manipulation with a mod
 - **PDF Split**: Split PDF files into individual pages or custom ranges
 - **JPG to PDF**: Convert JPEG/PNG images to PDF format
 - **PDF to JPG**: Extract PDF pages as high-quality images
-- **DOC to PDF**: Convert Word documents (DOC/DOCX/ODT/RTF) to PDF
-- **PDF to DOC**: Convert PDF files to editable Word documents
 - **PDF Unlock**: Remove password protection from PDFs
 - **PDF Protect**: Add password protection to PDFs
 
@@ -50,19 +48,6 @@ A professional, production-ready web application for PDF manipulation with a mod
    # macOS:
    brew install imagemagick
    
-   # Install LibreOffice (for DOC/PDF conversions)
-   # Ubuntu/Debian:
-   sudo apt-get install libreoffice
-   
-   # macOS:
-   brew install --cask libreoffice
-   
-   # Optional: Install additional conversion tools
-   # Ubuntu/Debian:
-   sudo apt-get install poppler-utils unoconv
-   
-   # macOS:
-   brew install poppler
    ```
 
 3. **Configure permissions**
@@ -169,13 +154,7 @@ A professional, production-ready web application for PDF manipulation with a mod
    - Adjust memory_limit
    - Consider chunked processing
 
-4. **"LibreOffice not found" (DOC/PDF conversions)**
-   - Install LibreOffice
-   - Check soffice executable path
-   - Verify permissions for headless mode
-   - Alternative: Install unoconv or pdf2docx
-
-5. **PDF split creates empty files**
+4. **PDF split creates empty files**
    - Check Ghostscript version
    - Verify PDF is not corrupted
    - Check available disk space
@@ -189,8 +168,6 @@ The application uses standard HTTP POST for file uploads:
 - `/tools/split.php` - PDF splitting
 - `/tools/jpg-to-pdf.php` - Image to PDF
 - `/tools/pdf-to-jpg.php` - PDF to images
-- `/tools/doc-to-pdf.php` - Document to PDF
-- `/tools/pdf-to-doc.php` - PDF to document
 - `/tools/unlock.php` - Remove PDF password
 - `/tools/protect.php` - Add PDF password
 
@@ -232,8 +209,6 @@ pdf/
 │   ├── split.php       # PDF splitting
 │   ├── jpg-to-pdf.php  # Image to PDF
 │   ├── pdf-to-jpg.php  # PDF to images
-│   ├── doc-to-pdf.php  # Document to PDF
-│   ├── pdf-to-doc.php  # PDF to document
 │   ├── unlock.php      # Remove PDF password
 │   └── protect.php     # Add PDF password
 ├── uploads/        # User uploaded files
@@ -244,25 +219,13 @@ pdf/
 └── .htaccess       # Apache configuration
 ```
 
-### New Features Details
+### PDF Split Feature
 
-#### PDF Split
 - Split PDFs into individual pages
 - Split by custom page ranges (e.g., 1-3, 5, 7-9)
 - Split by fixed page count
 - Downloads as ZIP archive for multiple files
-
-#### DOC to PDF Conversion
-- Supports DOC, DOCX, ODT, RTF, and TXT formats
-- Preserves formatting and layout
-- Batch conversion support
-- Requires LibreOffice installation
-
-#### PDF to DOC Conversion
-- Convert PDFs to DOCX, DOC, ODT, or TXT formats
-- Basic text and formatting preservation
-- OCR support for scanned PDFs (if available)
-- Note: Complex layouts may not convert perfectly
+- Uses Ghostscript for reliable splitting
 
 ### Contributing
 

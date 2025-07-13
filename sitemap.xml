@@ -55,18 +55,6 @@
         <priority>0.8</priority>
     </url>
     <url>
-        <loc>https://triniva.com/tools/doc-to-pdf.php</loc>
-        <lastmod><?php echo date('Y-m-d'); ?></lastmod>
-        <changefreq>weekly</changefreq>
-        <priority>0.8</priority>
-    </url>
-    <url>
-        <loc>https://triniva.com/tools/pdf-to-doc.php</loc>
-        <lastmod><?php echo date('Y-m-d'); ?></lastmod>
-        <changefreq>weekly</changefreq>
-        <priority>0.8</priority>
-    </url>
-    <url>
         <loc>https://triniva.com/about.php</loc>
         <lastmod><?php echo date('Y-m-d'); ?></lastmod>
         <changefreq>monthly</changefreq>
