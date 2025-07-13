@@ -178,8 +178,7 @@ This project is licensed under the MIT License.
 ### Support
 
 For issues or questions:
-- Email: support@triniva.com
-- Documentation: https://triniva.com/docs
+- Email: info@freshyporta.com
 - Issues: https://github.com/sagarmaiti45/pdf-tool/issues
 
 ---

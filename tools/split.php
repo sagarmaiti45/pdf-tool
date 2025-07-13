@@ -433,11 +433,7 @@ HTML;
                         <i class="fas fa-download"></i> Download Split PDFs
                     </a>
                 </div>
-                
-                <div style="text-align: center;">
-                    <a href="split.php" class="btn btn-secondary">Split Another PDF</a>
-                </div>
-            <?php else: ?>
+            <?php endif; ?>
                 <form method="POST" enctype="multipart/form-data" id="splitForm">
                     <input type="hidden" name="csrf_token" value="<?php echo $csrfToken; ?>">
                     
@@ -523,7 +519,6 @@ HTML;
                         <i class="fas fa-shield-alt"></i> Your files are processed securely and deleted automatically after download.
                     </p>
                 </div>
-            <?php endif; ?>
         </div>
     </div>
 </div>
