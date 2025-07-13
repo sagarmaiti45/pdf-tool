@@ -86,6 +86,33 @@ if (isset($_GET['test'])) {
                     <p>Add password protection to your PDFs</p>
                     <span class="tool-action">Protect Now <i class="fas fa-arrow-right"></i></span>
                 </a>
+
+                <a href="tools/split.php" class="tool-card">
+                    <div class="tool-icon">
+                        <i class="fas fa-cut"></i>
+                    </div>
+                    <h3>Split PDF</h3>
+                    <p>Split PDF files into multiple documents</p>
+                    <span class="tool-action">Split Now <i class="fas fa-arrow-right"></i></span>
+                </a>
+
+                <a href="tools/doc-to-pdf.php" class="tool-card">
+                    <div class="tool-icon">
+                        <i class="fas fa-file-word"></i>
+                    </div>
+                    <h3>DOC to PDF</h3>
+                    <p>Convert Word documents to PDF format</p>
+                    <span class="tool-action">Convert Now <i class="fas fa-arrow-right"></i></span>
+                </a>
+
+                <a href="tools/pdf-to-doc.php" class="tool-card">
+                    <div class="tool-icon">
+                        <i class="fas fa-file-pdf"></i>
+                    </div>
+                    <h3>PDF to DOC</h3>
+                    <p>Convert PDF files to Word documents</p>
+                    <span class="tool-action">Convert Now <i class="fas fa-arrow-right"></i></span>
+                </a>
             </div>
         </div>
     </section>
