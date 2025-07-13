@@ -223,17 +223,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $success = true;
             }
         } else {
-            // Multiple files - create ZIP
-            if (!class_exists('ZipArchive')) {
-                // If ZipArchive is not available, provide the first file only
-                $outputFile = UPLOAD_DIR . uniqid('split_') . '.pdf';
-                if (copy($splitFiles[0], $outputFile)) {
-                    $_SESSION['temp_files'][] = $outputFile;
-                    $downloadLink = 'download.php?file=' . urlencode(basename($outputFile));
-                    $success = true;
-                    $errors[] = 'Note: ZipArchive not available. Only the first split file is provided.';
-                }
-            } else {
+            // Multiple files - create archive
+            if (class_exists('ZipArchive')) {
+                // Use ZipArchive if available
                 $zipFile = UPLOAD_DIR . uniqid('split_') . '.zip';
                 $zip = new ZipArchive();
                 
@@ -248,6 +240,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $success = true;
                 } else {
                     throw new RuntimeException('Failed to create ZIP file.');
+                }
+            } else {
+                // Alternative: Create a TAR archive using PHP
+                $tarFile = UPLOAD_DIR . uniqid('split_') . '.tar';
+                
+                try {
+                    $tar = new PharData($tarFile);
+                    foreach ($splitFiles as $file) {
+                        $tar->addFile($file, basename($file));
+                    }
+                    
+                    $_SESSION['temp_files'][] = $tarFile;
+                    $downloadLink = 'download.php?file=' . urlencode(basename($tarFile));
+                    $success = true;
+                } catch (Exception $e) {
+                    // If TAR also fails, create a simple concatenated PDF with page markers
+                    $mergedFile = UPLOAD_DIR . uniqid('split_all_') . '.pdf';
+                    $gsPath = defined('GS_PATH') ? GS_PATH : '/usr/bin/gs';
+                    
+                    $command = $gsPath . " -dBATCH -dNOPAUSE -q -sDEVICE=pdfwrite " .
+                              "-sOutputFile=" . escapeshellarg($mergedFile) . " ";
+                    
+                    foreach ($splitFiles as $file) {
+                        $command .= escapeshellarg($file) . " ";
+                    }
+                    
+                    $command .= "2>&1";
+                    exec($command, $output, $returnVar);
+                    
+                    if ($returnVar === 0 && file_exists($mergedFile)) {
+                        $_SESSION['temp_files'][] = $mergedFile;
+                        $downloadLink = 'download.php?file=' . urlencode(basename($mergedFile));
+                        $success = true;
+                        $errors[] = 'Note: Split files have been merged into a single PDF. Each original page is preserved in order.';
+                    } else {
+                        // Last resort: provide the first file
+                        $outputFile = UPLOAD_DIR . uniqid('split_') . '.pdf';
+                        if (copy($splitFiles[0], $outputFile)) {
+                            $_SESSION['temp_files'][] = $outputFile;
+                            $downloadLink = 'download.php?file=' . urlencode(basename($outputFile));
+                            $success = true;
+                            $errors[] = 'Note: Only the first split file is available for download.';
+                        }
+                    }
                 }
             }
         }
@@ -429,7 +465,7 @@ HTML;
                         </div>
                     </div>
 
-                    <div class="form-group">
+                    <div class="form-group" style="margin-top: 2rem;">
                         <label class="form-label">Split Mode</label>
                         <div style="display: flex; gap: 2rem; flex-wrap: wrap;">
                             <label style="display: flex; align-items: center; cursor: pointer;">
