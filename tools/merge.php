@@ -1,7 +1,6 @@
 <?php
 require_once '../includes/functions.php';
 require_once '../includes/normalize-page.php';
-require_once '../config/paths.php';
 
 // Page variables for header
 $page_title = 'Merge PDF - Combine Multiple Files';

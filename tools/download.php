@@ -52,6 +52,9 @@ switch ($fileExtension) {
     case 'zip':
         $contentType = 'application/zip';
         break;
+    case 'tar':
+        $contentType = 'application/x-tar';
+        break;
     case 'doc':
     case 'docx':
         $contentType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';

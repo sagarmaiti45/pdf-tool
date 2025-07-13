@@ -1,6 +1,5 @@
 <?php
 require_once '../includes/functions.php';
-require_once '../config/paths.php';
 
 // Page variables for header
 $page_title = 'JPG to PDF - Convert Images to PDF';
