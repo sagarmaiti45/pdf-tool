@@ -1,4 +1,5 @@
 <?php
+require_once '../includes/config.php';
 require_once '../includes/functions.php';
 
 // Page variables for header
@@ -212,182 +213,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $pageSize = $_POST['page_size'] ?? 'a4';
         $orientation = $_POST['orientation'] ?? 'portrait';
         
-        // Use configured paths
-        $gsPath = GS_PATH;
-        $magickPath = MAGICK_PATH;
-        
-        // Handle "original" page size separately
-        $keepOriginalSize = ($pageSize === 'original');
-        
-        // Page size dimensions in pixels at 72 DPI
-        $pageSizeMap = [
-            'a4' => '595x842',
-            'letter' => '612x792',
-            'legal' => '612x1008',
-            'a3' => '842x1191'
-        ];
-        
-        $pageSize = $pageSizeMap[$pageSize] ?? '595x842';
-        
-        // Create a temporary directory for Ghostscript
-        $gsTempDir = TEMP_DIR . 'gs_temp_' . uniqid() . '/';
-        if (!mkdir($gsTempDir, 0777, true)) {
-            throw new RuntimeException('Failed to create temporary directory.');
-        }
-        
+        // Use PHP-based JPG to PDF conversion
         try {
-            // Method 1: Direct ImageMagick to PDF conversion
-            $fileList = implode(' ', array_map('escapeshellarg', $uploadedFiles));
-            
-            // Apply orientation if landscape
-            $pageSizeForConvert = $pageSize;
-            if ($orientation === 'landscape') {
-                list($width, $height) = explode('x', $pageSize);
-                $pageSizeForConvert = $height . 'x' . $width;
-            }
-            
-            // Adjust command based on ImageMagick version and page size
-            if ($keepOriginalSize) {
-                // Keep original image sizes
-                if (strpos($magickPath, 'convert') !== false) {
-                    $command = sprintf(
-                        'MAGICK_TMPDIR=%s %s %s -quality 90 %s 2>&1',
-                        escapeshellarg($gsTempDir),
-                        $magickPath,
-                        $fileList,
-                        escapeshellarg($outputFile)
-                    );
-                } else {
-                    $command = sprintf(
-                        'MAGICK_TMPDIR=%s %s convert %s -quality 90 %s 2>&1',
-                        escapeshellarg($gsTempDir),
-                        $magickPath,
-                        $fileList,
-                        escapeshellarg($outputFile)
-                    );
-                }
-            } else {
-                // Resize to specific page size
-                if (strpos($magickPath, 'convert') !== false) {
-                    // Using 'convert' command directly (Docker/Linux)
-                    $command = sprintf(
-                        'MAGICK_TMPDIR=%s %s %s -resize %s\> -extent %s -gravity center -background white -quality 90 %s 2>&1',
-                        escapeshellarg($gsTempDir),
-                        $magickPath,
-                        $fileList,
-                        $pageSizeForConvert,
-                        $pageSizeForConvert,
-                        escapeshellarg($outputFile)
-                    );
-                } else {
-                    // Using 'magick' command (newer versions)
-                    $command = sprintf(
-                        'MAGICK_TMPDIR=%s %s convert %s -resize %s\> -extent %s -gravity center -background white -quality 90 %s 2>&1',
-                        escapeshellarg($gsTempDir),
-                        $magickPath,
-                        $fileList,
-                        $pageSizeForConvert,
-                        $pageSizeForConvert,
-                        escapeshellarg($outputFile)
-                    );
-                }
-            }
-            
-            exec($command, $output, $returnCode);
-            
-            // If ImageMagick fails, try using Ghostscript directly
-            if ($returnCode !== 0 || !file_exists($outputFile)) {
-                // Method 2: Convert each image to PDF first, then merge
-                $pdfFiles = [];
-                foreach ($uploadedFiles as $index => $imageFile) {
-                    $tempPdf = $gsTempDir . 'page_' . $index . '.pdf';
-                    
-                    // Convert image to PDF using ImageMagick
-                    if ($keepOriginalSize) {
-                        // Keep original size
-                        if (strpos($magickPath, 'convert') !== false) {
-                            $imgCommand = sprintf(
-                                'MAGICK_TMPDIR=%s %s %s %s 2>&1',
-                                escapeshellarg($gsTempDir),
-                                $magickPath,
-                                escapeshellarg($imageFile),
-                                escapeshellarg($tempPdf)
-                            );
-                        } else {
-                            $imgCommand = sprintf(
-                                'MAGICK_TMPDIR=%s %s convert %s %s 2>&1',
-                                escapeshellarg($gsTempDir),
-                                $magickPath,
-                                escapeshellarg($imageFile),
-                                escapeshellarg($tempPdf)
-                            );
-                        }
-                    } else {
-                        // Resize to specific page size
-                        if (strpos($magickPath, 'convert') !== false) {
-                            // Using 'convert' command directly (Docker/Linux)
-                            $imgCommand = sprintf(
-                                'MAGICK_TMPDIR=%s %s %s -page %s -gravity center -background white %s 2>&1',
-                                escapeshellarg($gsTempDir),
-                                $magickPath,
-                                escapeshellarg($imageFile),
-                                $pageSizeForConvert,
-                                escapeshellarg($tempPdf)
-                            );
-                        } else {
-                            // Using 'magick' command (newer versions)
-                            $imgCommand = sprintf(
-                                'MAGICK_TMPDIR=%s %s convert %s -page %s -gravity center -background white %s 2>&1',
-                                escapeshellarg($gsTempDir),
-                                $magickPath,
-                                escapeshellarg($imageFile),
-                                $pageSizeForConvert,
-                                escapeshellarg($tempPdf)
-                            );
-                        }
-                    }
-                    
-                    exec($imgCommand, $imgOutput, $imgReturn);
-                    
-                    if ($imgReturn === 0 && file_exists($tempPdf)) {
-                        $pdfFiles[] = $tempPdf;
-                    }
-                }
-                
-                // Merge PDFs if we have any
-                if (!empty($pdfFiles)) {
-                    $pdfList = implode(' ', array_map('escapeshellarg', $pdfFiles));
-                    $mergeCommand = sprintf(
-                        'TMPDIR=%s %s -q -dNOPAUSE -dBATCH -sDEVICE=pdfwrite ' .
-                        '-dCompatibilityLevel=1.4 ' .
-                        '-sOutputFile=%s %s 2>&1',
-                        escapeshellarg($gsTempDir),
-                        $gsPath,
-                        escapeshellarg($outputFile),
-                        $pdfList
-                    );
-                    
-                    exec($mergeCommand, $output, $returnCode);
-                    
-                    // Clean up temporary PDFs
-                    foreach ($pdfFiles as $pdfFile) {
-                        if (file_exists($pdfFile)) {
-                            unlink($pdfFile);
-                        }
-                    }
-                }
-            }
-        } finally {
-            // Clean up temporary directory
-            if (is_dir($gsTempDir)) {
-                array_map('unlink', glob($gsTempDir . '*'));
-                rmdir($gsTempDir);
-            }
-        }
-        
-        // Log the command for debugging
-        if (isset($command)) {
-            logError('JPG to PDF Command', ['command' => $command]);
+            $pdfContent = convertImagesToPDFWithPHP($uploadedFiles, $pageSize, $orientation);
+            file_put_contents($outputFile, $pdfContent);
+        } catch (Exception $e) {
+            throw new RuntimeException('Failed to create PDF from images: ' . $e->getMessage());
         }
         
         // Clean up uploaded files
@@ -395,9 +226,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             unlink($file);
         }
         
-        if ($returnCode !== 0 || !file_exists($outputFile)) {
-            logError('JPG to PDF Failed', ['output' => $output, 'return_code' => $returnCode]);
-            throw new RuntimeException('Failed to create PDF from images. ' . implode(' ', $output));
+        if (!file_exists($outputFile) || filesize($outputFile) < 100) {
+            throw new RuntimeException('Failed to create PDF from images.');
         }
         
         $_SESSION['download_file'] = $outputFile;
@@ -529,6 +359,157 @@ require_once '../includes/header.php';
     </div>
 
 <?php
+
+// PHP-based image to PDF conversion
+function convertImagesToPDFWithPHP($imageFiles, $pageSize = 'a4', $orientation = 'portrait') {
+    // Page size dimensions in points (1/72 inch)
+    $pageSizes = [
+        'a4' => ['width' => 595, 'height' => 842],
+        'letter' => ['width' => 612, 'height' => 792],
+        'legal' => ['width' => 612, 'height' => 1008],
+        'a3' => ['width' => 842, 'height' => 1191],
+        'original' => null
+    ];
+    
+    $pageDimensions = $pageSizes[$pageSize] ?? $pageSizes['a4'];
+    
+    // Swap dimensions for landscape orientation
+    if ($orientation === 'landscape' && $pageDimensions) {
+        $temp = $pageDimensions['width'];
+        $pageDimensions['width'] = $pageDimensions['height'];
+        $pageDimensions['height'] = $temp;
+    }
+    
+    // Start building PDF
+    $pdf = "%PDF-1.4\n%âÉåÒ\n";
+    
+    $objects = [];
+    $pages = [];
+    $currentObjNum = 1;
+    
+    // Catalog object (1 0 obj)
+    $objects[$currentObjNum++] = "1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj";
+    
+    // Pages will be object 2, but we'll create it after processing images
+    $pagesObjNum = $currentObjNum++;
+    
+    // Process each image
+    foreach ($imageFiles as $index => $imageFile) {
+        $imageInfo = getimagesize($imageFile);
+        if (!$imageInfo) continue;
+        
+        $imageWidth = $imageInfo[0];
+        $imageHeight = $imageInfo[1];
+        $imageType = $imageInfo[2];
+        
+        // Determine page size for this image
+        if ($pageSize === 'original') {
+            // Use image dimensions as page size (converted to points)
+            $pageWidth = $imageWidth * 72 / 96; // Assuming 96 DPI
+            $pageHeight = $imageHeight * 72 / 96;
+        } else {
+            $pageWidth = $pageDimensions['width'];
+            $pageHeight = $pageDimensions['height'];
+        }
+        
+        // Create page object
+        $pageObjNum = $currentObjNum++;
+        $pages[] = "$pageObjNum 0 R";
+        
+        // Create XObject for image
+        $xobjNum = $currentObjNum++;
+        
+        // Read image data
+        $imageData = file_get_contents($imageFile);
+        
+        // Determine image format and filter
+        $filter = '';
+        if ($imageType == IMAGETYPE_JPEG) {
+            $filter = '/DCTDecode';
+        } elseif ($imageType == IMAGETYPE_PNG) {
+            // For PNG, we need to convert to JPEG for simplicity
+            $img = imagecreatefrompng($imageFile);
+            ob_start();
+            imagejpeg($img, null, 90);
+            $imageData = ob_get_clean();
+            imagedestroy($img);
+            $filter = '/DCTDecode';
+        }
+        
+        // Calculate scaling to fit image on page
+        $scale = min($pageWidth / $imageWidth, $pageHeight / $imageHeight, 1);
+        $scaledWidth = $imageWidth * $scale;
+        $scaledHeight = $imageHeight * $scale;
+        
+        // Center image on page
+        $xOffset = ($pageWidth - $scaledWidth) / 2;
+        $yOffset = ($pageHeight - $scaledHeight) / 2;
+        
+        // Create image XObject
+        $objects[$xobjNum] = "$xobjNum 0 obj\n" .
+            "<< /Type /XObject /Subtype /Image " .
+            "/Width $imageWidth /Height $imageHeight " .
+            "/ColorSpace /DeviceRGB /BitsPerComponent 8 " .
+            "/Filter $filter /Length " . strlen($imageData) . " >>\n" .
+            "stream\n$imageData\nendstream\nendobj";
+        
+        // Create content stream for page
+        $contentObjNum = $currentObjNum++;
+        $contentStream = "q\n" .
+            "$scaledWidth 0 0 $scaledHeight $xOffset $yOffset cm\n" .
+            "/Im$index Do\n" .
+            "Q";
+        
+        $objects[$contentObjNum] = "$contentObjNum 0 obj\n" .
+            "<< /Length " . strlen($contentStream) . " >>\n" .
+            "stream\n$contentStream\nendstream\nendobj";
+        
+        // Create resources object
+        $resourcesObjNum = $currentObjNum++;
+        $objects[$resourcesObjNum] = "$resourcesObjNum 0 obj\n" .
+            "<< /XObject << /Im$index $xobjNum 0 R >> >>\nendobj";
+        
+        // Create page object
+        $objects[$pageObjNum] = "$pageObjNum 0 obj\n" .
+            "<< /Type /Page /Parent 2 0 R " .
+            "/MediaBox [0 0 $pageWidth $pageHeight] " .
+            "/Resources $resourcesObjNum 0 R " .
+            "/Contents $contentObjNum 0 R >>\nendobj";
+    }
+    
+    // Create Pages object
+    $objects[$pagesObjNum] = "2 0 obj\n" .
+        "<< /Type /Pages /Kids [" . implode(' ', $pages) . "] " .
+        "/Count " . count($pages) . " >>\nendobj";
+    
+    // Write all objects
+    $xrefPositions = [];
+    $currentPos = strlen($pdf);
+    
+    foreach ($objects as $objNum => $objContent) {
+        $xrefPositions[$objNum] = $currentPos;
+        $pdf .= $objContent . "\n";
+        $currentPos = strlen($pdf);
+    }
+    
+    // Write xref table
+    $xrefOffset = $currentPos;
+    $pdf .= "xref\n0 " . (count($objects) + 1) . "\n";
+    $pdf .= "0000000000 65535 f \n";
+    
+    for ($i = 1; $i <= count($objects); $i++) {
+        if (isset($xrefPositions[$i])) {
+            $pdf .= sprintf("%010d 00000 n \n", $xrefPositions[$i]);
+        }
+    }
+    
+    // Write trailer
+    $pdf .= "trailer\n<< /Size " . (count($objects) + 1) . " /Root 1 0 R >>\n";
+    $pdf .= "startxref\n$xrefOffset\n%%EOF";
+    
+    return $pdf;
+}
+
 // Include footer
 require_once '../includes/footer.php';
 ?>

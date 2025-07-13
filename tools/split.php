@@ -100,117 +100,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             throw new RuntimeException('Failed to create temporary directory.');
         }
         
-        $splitFiles = [];
-        $gsPath = defined('GS_PATH') ? GS_PATH : '/usr/bin/gs';
+        // Use PHP-based PDF splitting
+        try {
+            $splitFiles = splitPDFWithPHP($inputFile, $tempDir, $splitMode, $pageRanges, $pageCount);
+        } catch (Exception $e) {
+            throw new RuntimeException('Failed to split PDF: ' . $e->getMessage());
+        }
         
-        if ($splitMode === 'single') {
-            // Split into individual pages
-            $actualPages = 0;
-            for ($i = 1; $i <= $totalPages; $i++) {
-                $outputFile = $tempDir . sprintf("page_%03d.pdf", $i);
-                
-                $command = $gsPath . " -sDEVICE=pdfwrite -dNOPAUSE -dBATCH -dSAFER " .
-                          "-dFirstPage={$i} -dLastPage={$i} " .
-                          "-sOutputFile=" . escapeshellarg($outputFile) . " " .
-                          escapeshellarg($inputFile) . " 2>&1";
-                
-                exec($command, $output, $returnVar);
-                
-                if ($returnVar === 0 && file_exists($outputFile) && filesize($outputFile) > 0) {
-                    $splitFiles[] = $outputFile;
-                    $actualPages = $i;
-                } else {
-                    // No more pages
-                    @unlink($outputFile);
-                    break;
-                }
-            }
-            
-            if (empty($splitFiles)) {
-                throw new RuntimeException('Failed to split PDF. The file might be corrupted or protected.');
-            }
-            
-        } elseif ($splitMode === 'range' && !empty($pageRanges)) {
-            // Split by custom ranges
-            $ranges = array_map('trim', explode(',', $pageRanges));
-            $rangeIndex = 1;
-            
-            foreach ($ranges as $range) {
-                if (empty($range)) continue;
-                
-                $outputFile = $tempDir . sprintf("range_%03d.pdf", $rangeIndex);
-                
-                if (strpos($range, '-') !== false) {
-                    // Handle range like "1-3"
-                    list($start, $end) = array_map('intval', explode('-', $range));
-                    if ($start < 1) $start = 1;
-                    if ($end < $start) $end = $start;
-                    
-                    $command = $gsPath . " -sDEVICE=pdfwrite -dNOPAUSE -dBATCH -dSAFER " .
-                              "-dFirstPage={$start} -dLastPage={$end} " .
-                              "-sOutputFile=" . escapeshellarg($outputFile) . " " .
-                              escapeshellarg($inputFile) . " 2>&1";
-                } else {
-                    // Single page
-                    $page = (int)$range;
-                    if ($page < 1) continue;
-                    
-                    $command = $gsPath . " -sDEVICE=pdfwrite -dNOPAUSE -dBATCH -dSAFER " .
-                              "-dFirstPage={$page} -dLastPage={$page} " .
-                              "-sOutputFile=" . escapeshellarg($outputFile) . " " .
-                              escapeshellarg($inputFile) . " 2>&1";
-                }
-                
-                exec($command, $output, $returnVar);
-                
-                if ($returnVar === 0 && file_exists($outputFile) && filesize($outputFile) > 0) {
-                    $splitFiles[] = $outputFile;
-                    $rangeIndex++;
-                } else {
-                    @unlink($outputFile);
-                }
-            }
-            
-            if (empty($splitFiles)) {
-                throw new RuntimeException('Failed to split PDF. Please check your page ranges.');
-            }
-            
-        } elseif ($splitMode === 'fixed' && $pageCount > 0) {
-            // Split by fixed page count
-            $partIndex = 1;
-            $pageNum = 1;
-            
-            while ($pageNum <= $totalPages) {
-                $start = $pageNum;
-                $end = $pageNum + $pageCount - 1;
-                
-                $outputFile = $tempDir . sprintf("part_%03d.pdf", $partIndex);
-                
-                $command = $gsPath . " -sDEVICE=pdfwrite -dNOPAUSE -dBATCH -dSAFER " .
-                          "-dFirstPage={$start} -dLastPage={$end} " .
-                          "-sOutputFile=" . escapeshellarg($outputFile) . " " .
-                          escapeshellarg($inputFile) . " 2>&1";
-                
-                exec($command, $output, $returnVar);
-                
-                if ($returnVar === 0 && file_exists($outputFile) && filesize($outputFile) > 0) {
-                    $splitFiles[] = $outputFile;
-                    $partIndex++;
-                    $pageNum = $end + 1;
-                } else {
-                    @unlink($outputFile);
-                    break;
-                }
-                
-                // Safety check to prevent infinite loop
-                if ($partIndex > 1000) break;
-            }
-            
-            if (empty($splitFiles)) {
-                throw new RuntimeException('Failed to split PDF into fixed page counts.');
-            }
-        } else {
-            throw new RuntimeException('Invalid split mode or parameters.');
+        if (empty($splitFiles)) {
+            throw new RuntimeException('Failed to split PDF. The file might be corrupted or protected.');
         }
         
         // Create ZIP file with all split PDFs
@@ -524,5 +422,231 @@ HTML;
 </div>
 
 <?php
+
+// PHP-based PDF splitting function
+function splitPDFWithPHP($inputFile, $outputDir, $splitMode, $pageRanges = '', $pageCount = 1) {
+    $splitFiles = [];
+    $content = file_get_contents($inputFile);
+    
+    // Parse PDF structure
+    $pdfData = parsePDFStructure($content);
+    $pages = $pdfData['pages'];
+    $totalPages = count($pages);
+    
+    if ($splitMode === 'single') {
+        // Split into individual pages
+        foreach ($pages as $index => $pageObj) {
+            $pageNum = $index + 1; // Convert to 1-based numbering
+            $outputFile = $outputDir . sprintf("page_%03d.pdf", $pageNum);
+            $pdfContent = createSinglePagePDF($content, $pdfData, $pageNum);
+            file_put_contents($outputFile, $pdfContent);
+            $splitFiles[] = $outputFile;
+        }
+    } elseif ($splitMode === 'range' && !empty($pageRanges)) {
+        // Split by custom ranges
+        $ranges = array_map('trim', explode(',', $pageRanges));
+        $rangeIndex = 1;
+        
+        foreach ($ranges as $range) {
+            if (empty($range)) continue;
+            
+            $outputFile = $outputDir . sprintf("range_%03d.pdf", $rangeIndex);
+            $pageNumbers = [];
+            
+            if (strpos($range, '-') !== false) {
+                // Handle range like "1-3"
+                list($start, $end) = array_map('intval', explode('-', $range));
+                $start = max(1, min($start, $totalPages));
+                $end = max($start, min($end, $totalPages));
+                
+                for ($i = $start; $i <= $end; $i++) {
+                    $pageNumbers[] = $i;
+                }
+            } else {
+                // Single page
+                $page = (int)$range;
+                if ($page >= 1 && $page <= $totalPages) {
+                    $pageNumbers[] = $page;
+                }
+            }
+            
+            if (!empty($pageNumbers)) {
+                $pdfContent = createMultiPagePDF($content, $pdfData, $pageNumbers);
+                file_put_contents($outputFile, $pdfContent);
+                $splitFiles[] = $outputFile;
+                $rangeIndex++;
+            }
+        }
+    } elseif ($splitMode === 'fixed' && $pageCount > 0) {
+        // Split by fixed page count
+        $partIndex = 1;
+        
+        for ($start = 1; $start <= $totalPages; $start += $pageCount) {
+            $end = min($start + $pageCount - 1, $totalPages);
+            $pageNumbers = range($start, $end);
+            
+            $outputFile = $outputDir . sprintf("part_%03d.pdf", $partIndex);
+            $pdfContent = createMultiPagePDF($content, $pdfData, $pageNumbers);
+            file_put_contents($outputFile, $pdfContent);
+            $splitFiles[] = $outputFile;
+            $partIndex++;
+        }
+    }
+    
+    return $splitFiles;
+}
+
+// Parse PDF structure to extract pages and objects
+function parsePDFStructure($content) {
+    $data = [
+        'version' => '1.4',
+        'objects' => [],
+        'pages' => [],
+        'catalog' => null,
+        'pagesObj' => null,
+        'info' => null
+    ];
+    
+    // Extract PDF version
+    if (preg_match('/^%PDF-(\d+\.\d+)/', $content, $match)) {
+        $data['version'] = $match[1];
+    }
+    
+    // Extract all objects
+    preg_match_all('/(\d+)\s+(\d+)\s+obj(.*?)endobj/s', $content, $matches, PREG_SET_ORDER);
+    
+    foreach ($matches as $match) {
+        $objNum = (int)$match[1];
+        $objGen = (int)$match[2];
+        $objContent = $match[3];
+        
+        $data['objects'][$objNum] = [
+            'num' => $objNum,
+            'gen' => $objGen,
+            'content' => $objContent
+        ];
+        
+        // Identify special objects
+        if (strpos($objContent, '/Type /Catalog') !== false || strpos($objContent, '/Type/Catalog') !== false) {
+            $data['catalog'] = $objNum;
+        } elseif (strpos($objContent, '/Type /Pages') !== false || strpos($objContent, '/Type/Pages') !== false) {
+            $data['pagesObj'] = $objNum;
+        } elseif (strpos($objContent, '/Type /Page') !== false || strpos($objContent, '/Type/Page') !== false) {
+            if (strpos($objContent, '/Kids') === false) { // Not a Pages object
+                $data['pages'][] = $objNum;
+            }
+        }
+    }
+    
+    // Extract trailer info
+    if (preg_match('/trailer\s*<<(.*?)>>/s', $content, $match)) {
+        if (preg_match('/\/Root\s+(\d+)\s+\d+\s+R/', $match[1], $rootMatch)) {
+            $data['catalog'] = (int)$rootMatch[1];
+        }
+        if (preg_match('/\/Info\s+(\d+)\s+\d+\s+R/', $match[1], $infoMatch)) {
+            $data['info'] = (int)$infoMatch[1];
+        }
+    }
+    
+    return $data;
+}
+
+// Create a single-page PDF
+function createSinglePagePDF($originalContent, $pdfData, $pageNum) {
+    return createMultiPagePDF($originalContent, $pdfData, [$pageNum]);
+}
+
+// Create a multi-page PDF with selected pages
+function createMultiPagePDF($originalContent, $pdfData, $pageNumbers) {
+    // Start building new PDF
+    $pdf = "%PDF-" . $pdfData['version'] . "\n%âÉåÒ\n";
+    
+    $objects = [];
+    $objMapping = [];
+    $currentObjNum = 1;
+    
+    // Create catalog object
+    $catalogNum = $currentObjNum++;
+    $objects[$catalogNum] = "$catalogNum 0 obj\n<< /Type /Catalog /Pages $currentObjNum 0 R >>\nendobj";
+    
+    // Create pages object
+    $pagesNum = $currentObjNum++;
+    $pageRefs = [];
+    
+    // Copy required pages and their resources
+    $copiedObjects = [];
+    foreach ($pageNumbers as $pageIndex) {
+        if (!isset($pdfData['pages'][$pageIndex - 1])) continue;
+        
+        $origPageNum = $pdfData['pages'][$pageIndex - 1];
+        $newPageNum = $currentObjNum++;
+        $objMapping[$origPageNum] = $newPageNum;
+        $pageRefs[] = "$newPageNum 0 R";
+        
+        // Copy page object and update parent reference
+        $pageContent = $pdfData['objects'][$origPageNum]['content'];
+        $pageContent = preg_replace('/\/Parent\s+\d+\s+\d+\s+R/', "/Parent $pagesNum 0 R", $pageContent);
+        
+        // Find and copy referenced objects (Resources, Contents, etc.)
+        preg_match_all('/(\d+)\s+\d+\s+R/', $pageContent, $refs);
+        foreach ($refs[1] as $refNum) {
+            $refNum = (int)$refNum;
+            if (!isset($copiedObjects[$refNum]) && isset($pdfData['objects'][$refNum])) {
+                $copiedObjects[$refNum] = true;
+            }
+        }
+        
+        $objects[$newPageNum] = "$newPageNum 0 obj$pageContent\nendobj";
+    }
+    
+    // Copy referenced objects
+    foreach ($copiedObjects as $origNum => $dummy) {
+        if (!isset($objMapping[$origNum])) {
+            $newNum = $currentObjNum++;
+            $objMapping[$origNum] = $newNum;
+            $objects[$newNum] = "$newNum 0 obj" . $pdfData['objects'][$origNum]['content'] . "\nendobj";
+        }
+    }
+    
+    // Update all object references
+    foreach ($objects as $num => &$obj) {
+        foreach ($objMapping as $oldNum => $newNum) {
+            $obj = preg_replace("/\b$oldNum 0 R\b/", "$newNum 0 R", $obj);
+        }
+    }
+    
+    // Create pages object with collected page references
+    $objects[$pagesNum] = "$pagesNum 0 obj\n<< /Type /Pages /Kids [" . implode(' ', $pageRefs) . "] /Count " . count($pageRefs) . " >>\nendobj";
+    
+    // Write all objects
+    $xrefPositions = [];
+    $currentPos = strlen($pdf);
+    
+    foreach ($objects as $num => $objContent) {
+        $xrefPositions[$num] = $currentPos;
+        $pdf .= $objContent . "\n";
+        $currentPos = strlen($pdf);
+    }
+    
+    // Write xref table
+    $xrefOffset = $currentPos;
+    $pdf .= "xref\n0 " . ($currentObjNum) . "\n";
+    $pdf .= "0000000000 65535 f \n";
+    
+    for ($i = 1; $i < $currentObjNum; $i++) {
+        if (isset($xrefPositions[$i])) {
+            $pdf .= sprintf("%010d 00000 n \n", $xrefPositions[$i]);
+        } else {
+            $pdf .= "0000000000 00000 f \n";
+        }
+    }
+    
+    // Write trailer
+    $pdf .= "trailer\n<< /Size $currentObjNum /Root $catalogNum 0 R >>\n";
+    $pdf .= "startxref\n$xrefOffset\n%%EOF";
+    
+    return $pdf;
+}
+
 require_once '../includes/footer.php';
 ?>

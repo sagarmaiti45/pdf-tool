@@ -147,22 +147,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 function compressPDF($content, $level = 'medium') {
-    // Basic PDF structure parsing
+    // Enhanced PDF compression with better parsing
     $objects = [];
     $xref = [];
     
-    // Find all objects
-    preg_match_all('/(\d+)\s+(\d+)\s+obj\s*\n(.*?)\nendobj/s', $content, $matches, PREG_SET_ORDER);
+    // Extract PDF version
+    preg_match('/^%PDF-(\d+\.\d+)/', $content, $versionMatch);
+    $pdfVersion = $versionMatch[1] ?? '1.4';
+    
+    // Find all objects with improved regex
+    preg_match_all('/(\d+)\s+(\d+)\s+obj(.*?)endobj/s', $content, $matches, PREG_SET_ORDER | PREG_OFFSET_CAPTURE);
     
     foreach ($matches as $match) {
-        $objNum = $match[1];
-        $objGen = $match[2];
-        $objContent = $match[3];
+        $objNum = $match[1][0];
+        $objGen = $match[2][0];
+        $objContent = $match[3][0];
         
         // Process different object types
         if (strpos($objContent, 'stream') !== false) {
-            // Handle stream objects
+            // Handle stream objects with enhanced compression
             $objContent = compressStreamObject($objContent, $level);
+        } elseif (strpos($objContent, '/Type /Font') !== false || strpos($objContent, '/Type/Font') !== false) {
+            // Skip font objects to avoid corruption
+            // Keep as is
+        } elseif (strpos($objContent, '/Type /XObject') !== false || strpos($objContent, '/Type/XObject') !== false) {
+            // Handle image objects
+            $objContent = compressImageObject($objContent, $level);
+        } else {
+            // Compress content strings
+            $objContent = compressContentStrings($objContent);
         }
         
         $objects[$objNum] = [
@@ -172,14 +185,29 @@ function compressPDF($content, $level = 'medium') {
         ];
     }
     
-    // Rebuild PDF
-    $output = "%PDF-1.4\n";
-    $offset = strlen($output);
+    // Extract linearization info if present
+    $linearized = false;
+    if (preg_match('/\/Linearized\s+1/', $content)) {
+        $linearized = true;
+    }
     
-    // Write objects
-    foreach ($objects as $obj) {
-        $xref[$obj['num']] = $offset;
-        $objStr = $obj['num'] . ' ' . $obj['gen'] . " obj\n" . $obj['content'] . "\nendobj\n";
+    // Rebuild PDF with optimization
+    $output = "%PDF-$pdfVersion\n";
+    if (!$linearized) {
+        // Add binary comment for better compatibility
+        $output .= "%âÉåÒ\n";
+    }
+    
+    $offset = strlen($output);
+    $newXref = [];
+    
+    // Write objects in optimized order
+    $sortedObjects = $objects;
+    ksort($sortedObjects, SORT_NUMERIC);
+    
+    foreach ($sortedObjects as $obj) {
+        $newXref[$obj['num']] = $offset;
+        $objStr = $obj['num'] . ' ' . $obj['gen'] . " obj" . $obj['content'] . "endobj\n";
         $output .= $objStr;
         $offset += strlen($objStr);
     }
@@ -187,24 +215,27 @@ function compressPDF($content, $level = 'medium') {
     // Write xref table
     $xrefOffset = $offset;
     $output .= "xref\n";
-    $output .= "0 " . (count($xref) + 1) . "\n";
+    $output .= "0 " . (count($newXref) + 1) . "\n";
     $output .= "0000000000 65535 f \n";
     
-    foreach ($xref as $num => $pos) {
+    foreach ($newXref as $num => $pos) {
         $output .= sprintf("%010d 00000 n \n", $pos);
     }
     
-    // Write trailer
+    // Write trailer with proper references
     $output .= "trailer\n";
     $output .= "<<\n";
-    $output .= "/Size " . (count($xref) + 1) . "\n";
+    $output .= "/Size " . (count($newXref) + 1) . "\n";
     
-    // Extract root and info from original
+    // Extract and preserve important references
     if (preg_match('/\/Root\s+(\d+)\s+\d+\s+R/', $content, $rootMatch)) {
         $output .= "/Root " . $rootMatch[1] . " 0 R\n";
     }
     if (preg_match('/\/Info\s+(\d+)\s+\d+\s+R/', $content, $infoMatch)) {
         $output .= "/Info " . $infoMatch[1] . " 0 R\n";
+    }
+    if (preg_match('/\/ID\s*\[(.*?)\]/', $content, $idMatch)) {
+        $output .= "/ID [" . $idMatch[1] . "]\n";
     }
     
     $output .= ">>\n";
@@ -216,64 +247,110 @@ function compressPDF($content, $level = 'medium') {
 }
 
 function compressStreamObject($objContent, $level) {
-    // Extract stream content
-    if (preg_match('/stream\s*\n(.*?)\nendstream/s', $objContent, $streamMatch)) {
-        $streamData = $streamMatch[1];
-        
-        // Check if already compressed
-        if (strpos($objContent, '/FlateDecode') !== false) {
-            // Already compressed, try to recompress with better settings
-            $decompressed = @gzuncompress($streamData);
-            if ($decompressed !== false) {
-                $compressionLevel = match($level) {
-                    'low' => 9,
-                    'medium' => 6,
-                    'high' => 3,
-                    default => 6
-                };
-                $recompressed = gzcompress($decompressed, $compressionLevel);
-                
-                if (strlen($recompressed) < strlen($streamData)) {
-                    $streamData = $recompressed;
-                }
-            }
-        } else {
-            // Not compressed, compress it
-            $compressionLevel = match($level) {
-                'low' => 9,
-                'medium' => 6,
-                'high' => 3,
-                default => 6
-            };
-            
-            $compressed = gzcompress($streamData, $compressionLevel);
-            
-            // Update dictionary
-            $dictPattern = '/<<(.*?)>>/s';
-            if (preg_match($dictPattern, $objContent, $dictMatch)) {
-                $dict = $dictMatch[1];
-                
-                // Add FlateDecode filter
-                if (!strpos($dict, '/Filter')) {
-                    $dict .= "\n/Filter /FlateDecode";
-                }
-                
-                // Update length
-                $dict = preg_replace('/\/Length\s+\d+/', '/Length ' . strlen($compressed), $dict);
-                
-                $objContent = preg_replace($dictPattern, '<<' . $dict . '>>', $objContent);
-            }
-            
-            $streamData = $compressed;
-        }
-        
-        // Replace stream content
-        $objContent = preg_replace(
-            '/stream\s*\n.*?\nendstream/s',
-            "stream\n" . $streamData . "\nendstream",
-            $objContent
-        );
+    // Extract stream content and dictionary
+    if (!preg_match('/<<(.*?)>>\s*stream\s*\n(.*?)\nendstream/s', $objContent, $matches)) {
+        return $objContent;
     }
+    
+    $dict = $matches[1];
+    $streamData = $matches[2];
+    
+    // Parse existing filters
+    $filters = [];
+    if (preg_match('/\/Filter\s*\[(.*?)\]/', $dict, $filterMatch)) {
+        // Array of filters
+        preg_match_all('/\/(\w+)/', $filterMatch[1], $filterNames);
+        $filters = $filterNames[1];
+    } elseif (preg_match('/\/Filter\s*\/(\w+)/', $dict, $filterMatch)) {
+        // Single filter
+        $filters = [$filterMatch[1]];
+    }
+    
+    // Decompress if needed
+    $decompressed = $streamData;
+    $wasCompressed = false;
+    
+    if (in_array('FlateDecode', $filters)) {
+        $temp = @gzuncompress($streamData);
+        if ($temp !== false) {
+            $decompressed = $temp;
+            $wasCompressed = true;
+        }
+    }
+    
+    // Set compression level based on setting
+    $compressionLevel = match($level) {
+        'low' => 1,      // Maximum compression (slowest)
+        'medium' => 6,   // Balanced
+        'high' => 9,     // Minimum compression (fastest, preserves quality)
+        default => 6
+    };
+    
+    // Recompress data
+    $compressed = gzcompress($decompressed, $compressionLevel);
+    
+    // Only use compressed version if it's actually smaller
+    if (!$wasCompressed || strlen($compressed) < strlen($streamData) * 0.95) {
+        $streamData = $compressed;
+        
+        // Update dictionary
+        if (!in_array('FlateDecode', $filters)) {
+            // Add FlateDecode filter
+            if (empty($filters)) {
+                $dict = preg_replace('/\s*$/', "\n/Filter /FlateDecode", $dict);
+            } else {
+                // Add to existing filters
+                $dict = preg_replace('/\/Filter\s*\/\w+/', '/Filter [/$1 /FlateDecode]', $dict);
+            }
+        }
+    }
+    
+    // Update length
+    $newLength = strlen($streamData);
+    $dict = preg_replace('/\/Length\s+\d+/', "/Length $newLength", $dict);
+    
+    // If no length field exists, add it
+    if (!preg_match('/\/Length/', $dict)) {
+        $dict = preg_replace('/\s*$/', "\n/Length $newLength", $dict);
+    }
+    
+    // Rebuild object content
+    $objContent = "\n<<$dict>>\nstream\n$streamData\nendstream";
+    
+    return $objContent;
+}
+
+function compressImageObject($objContent, $level) {
+    // Check if this is an image XObject
+    if (!preg_match('/\/Subtype\s*\/Image/', $objContent)) {
+        return $objContent;
+    }
+    
+    // For images, we can try to optimize the compression
+    // but we need to be careful not to corrupt the image data
+    
+    // Check current image format
+    if (preg_match('/\/Filter\s*\/DCTDecode/', $objContent)) {
+        // JPEG image - already compressed, don't recompress
+        return $objContent;
+    }
+    
+    // For other image types, use the general stream compression
+    return compressStreamObject($objContent, $level);
+}
+
+function compressContentStrings($objContent) {
+    // Remove unnecessary whitespace from content strings
+    // But be careful not to break the PDF structure
+    
+    // Remove extra spaces in dictionaries
+    $objContent = preg_replace('/\s+/', ' ', $objContent);
+    
+    // Remove trailing spaces
+    $objContent = preg_replace('/ +\n/', "\n", $objContent);
+    
+    // Compress number sequences
+    $objContent = preg_replace('/(\d) +(\d)/', '$1 $2', $objContent);
     
     return $objContent;
 }

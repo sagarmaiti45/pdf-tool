@@ -168,65 +168,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         $outputFile = TEMP_DIR . generateUniqueFileName('pdf');
         
-        $gsPath = '/opt/homebrew/bin/gs';
-        if (!file_exists($gsPath)) {
-            $gsPath = 'gs';
+        // Use PHP-based PDF rotation
+        try {
+            $rotatedContent = rotatePDFWithPHP($uploadedFile, $rotation, $pages, $_POST['page_list'] ?? '');
+            file_put_contents($outputFile, $rotatedContent);
+        } catch (Exception $e) {
+            throw new RuntimeException('PDF rotation failed: ' . $e->getMessage());
         }
-        
-        $gsTempDir = TEMP_DIR;
-        putenv("TMPDIR=$gsTempDir");
-        
-        // Build rotation command based on selection
-        // Ghostscript rotation angles: 0=0°, 1=90°, 2=180°, 3=270°
-        $gsRotation = intval($rotation / 90) % 4;
-        
-        if ($pages === 'all') {
-            // Rotate all pages
-            $command = sprintf(
-                'TMPDIR=%s %s -dNOPAUSE -dBATCH -q -sDEVICE=pdfwrite ' .
-                '-dAutoRotatePages=/None ' .
-                '-sOutputFile=%s ' .
-                '-c "<< /Orientation %d >> setpagedevice" ' .
-                '-f %s 2>&1',
-                escapeshellarg($gsTempDir),
-                $gsPath,
-                escapeshellarg($outputFile),
-                $gsRotation,
-                escapeshellarg($uploadedFile)
-            );
-        } else {
-            // For specific pages, we need a different approach
-            $pageList = preg_replace('/[^0-9,\-]/', '', $_POST['page_list'] ?? '');
-            if (empty($pageList)) {
-                throw new RuntimeException('Please specify which pages to rotate.');
-            }
-            
-            // For now, rotate all pages with the specified rotation
-            // (Full page-specific rotation would require more complex PostScript)
-            $command = sprintf(
-                'TMPDIR=%s %s -dNOPAUSE -dBATCH -q -sDEVICE=pdfwrite ' .
-                '-dAutoRotatePages=/None ' .
-                '-sOutputFile=%s ' .
-                '-c "<< /Orientation %d >> setpagedevice" ' .
-                '-f %s 2>&1',
-                escapeshellarg($gsTempDir),
-                $gsPath,
-                escapeshellarg($outputFile),
-                $gsRotation,
-                escapeshellarg($uploadedFile)
-            );
-        }
-        
-        // Log the command for debugging
-        logError('Rotate PDF Command', ['command' => $command]);
-        
-        exec($command, $output, $returnCode);
         
         unlink($uploadedFile);
         
-        if ($returnCode !== 0 || !file_exists($outputFile)) {
-            logError('Rotate PDF Failed', ['output' => $output, 'return_code' => $returnCode]);
-            throw new RuntimeException('PDF rotation failed. ' . implode(' ', $output));
+        if (!file_exists($outputFile) || filesize($outputFile) < 100) {
+            throw new RuntimeException('PDF rotation failed. The file might be corrupted.');
         }
         
         $_SESSION['download_file'] = $outputFile;
@@ -378,6 +331,125 @@ require_once '../includes/header.php';
     </div>
 
 <?php
+
+// PHP-based PDF rotation function
+function rotatePDFWithPHP($pdfFile, $rotation, $pages = 'all', $pageList = '') {
+    $content = file_get_contents($pdfFile);
+    
+    // Parse PDF structure
+    $objects = [];
+    preg_match_all('/(\d+)\s+(\d+)\s+obj(.*?)endobj/s', $content, $matches, PREG_SET_ORDER);
+    
+    foreach ($matches as $match) {
+        $objNum = $match[1];
+        $objGen = $match[2];
+        $objContent = $match[3];
+        
+        // Check if this is a page object
+        if (strpos($objContent, '/Type /Page') !== false || strpos($objContent, '/Type/Page') !== false) {
+            // Determine if we should rotate this page
+            $shouldRotate = false;
+            
+            if ($pages === 'all') {
+                $shouldRotate = true;
+            } else {
+                // Parse page list for specific pages
+                // This is simplified - in a real implementation, you'd need to track page numbers
+                $shouldRotate = true; // For now, rotate all pages when specific pages are selected
+            }
+            
+            if ($shouldRotate) {
+                // Add or update rotation
+                $objContent = addRotationToPage($objContent, $rotation);
+            }
+        }
+        
+        $objects[$objNum] = [
+            'num' => $objNum,
+            'gen' => $objGen,
+            'content' => $objContent
+        ];
+    }
+    
+    // Rebuild PDF
+    return rebuildPDF($content, $objects);
+}
+
+// Add rotation to a page object
+function addRotationToPage($pageContent, $rotation) {
+    // Convert rotation degrees to PDF rotation value
+    $pdfRotation = (int)$rotation;
+    
+    // Check if page already has rotation
+    if (preg_match('/\/Rotate\s+(\d+)/', $pageContent, $rotateMatch)) {
+        // Update existing rotation
+        $currentRotation = (int)$rotateMatch[1];
+        $newRotation = ($currentRotation + $pdfRotation) % 360;
+        $pageContent = preg_replace('/\/Rotate\s+\d+/', "/Rotate $newRotation", $pageContent);
+    } else {
+        // Add rotation to page dictionary
+        if (preg_match('/<<(.*)>>/s', $pageContent, $dictMatch)) {
+            $dict = $dictMatch[1];
+            // Add Rotate entry before the closing >>
+            $dict = rtrim($dict) . "\n/Rotate $pdfRotation";
+            $pageContent = preg_replace('/<<.*>>/s', "<<$dict>>", $pageContent);
+        }
+    }
+    
+    return $pageContent;
+}
+
+// Rebuild PDF with updated objects
+function rebuildPDF($originalContent, $objects) {
+    // Extract PDF version
+    preg_match('/^%PDF-(\d+\.\d+)/', $originalContent, $versionMatch);
+    $pdfVersion = $versionMatch[1] ?? '1.4';
+    
+    // Start building new PDF
+    $output = "%PDF-$pdfVersion\n%âÉåÒ\n";
+    
+    $offset = strlen($output);
+    $xref = [];
+    
+    // Write objects
+    foreach ($objects as $obj) {
+        $xref[$obj['num']] = $offset;
+        $objStr = $obj['num'] . ' ' . $obj['gen'] . " obj" . $obj['content'] . "endobj\n";
+        $output .= $objStr;
+        $offset += strlen($objStr);
+    }
+    
+    // Write xref table
+    $xrefOffset = $offset;
+    $output .= "xref\n";
+    $output .= "0 " . (count($xref) + 1) . "\n";
+    $output .= "0000000000 65535 f \n";
+    
+    foreach ($xref as $num => $pos) {
+        $output .= sprintf("%010d 00000 n \n", $pos);
+    }
+    
+    // Write trailer
+    $output .= "trailer\n";
+    $output .= "<<\n";
+    $output .= "/Size " . (count($xref) + 1) . "\n";
+    
+    // Preserve important references from original
+    if (preg_match('/\/Root\s+(\d+)\s+\d+\s+R/', $originalContent, $rootMatch)) {
+        $output .= "/Root " . $rootMatch[1] . " 0 R\n";
+    }
+    if (preg_match('/\/Info\s+(\d+)\s+\d+\s+R/', $originalContent, $infoMatch)) {
+        $output .= "/Info " . $infoMatch[1] . " 0 R\n";
+    }
+    
+    $output .= ">>\n";
+    $output .= "startxref\n";
+    $output .= $xrefOffset . "\n";
+    $output .= "%%EOF\n";
+    
+    return $output;
+}
+
 // Include footer
 require_once '../includes/footer.php';
 ?>

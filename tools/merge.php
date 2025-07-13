@@ -1,4 +1,5 @@
 <?php
+require_once '../includes/config.php';
 require_once '../includes/functions.php';
 require_once '../includes/normalize-page.php';
 
@@ -200,14 +201,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         $outputFile = TEMP_DIR . generateUniqueFileName('pdf');
         
-        // Build Ghostscript command to merge PDFs
-        $gsPath = GS_PATH;
-        
-        $gsTempDir = TEMP_DIR;
-        putenv("TMPDIR=$gsTempDir");
-        
-        $fileList = implode(' ', array_map('escapeshellarg', $uploadedFiles));
-        
         // Check if page size normalization is requested
         $pageSizeOption = $_POST['page_size_option'] ?? 'original';
         
@@ -262,48 +255,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
             
-            // Now merge the normalized files with explicit page size enforcement
-            $fileList = implode(' ', array_map('escapeshellarg', $normalizedFiles));
-            $command = sprintf(
-                'TMPDIR=%s %s -dBATCH -dNOPAUSE -q -sDEVICE=pdfwrite ' .
-                '-dDEVICEWIDTHPOINTS=%d -dDEVICEHEIGHTPOINTS=%d ' .
-                '-dFIXEDMEDIA -dPDFFitPage ' .
-                '-dCompatibilityLevel=1.4 ' .
-                '-sOutputFile=%s %s 2>&1',
-                escapeshellarg($gsTempDir),
-                $gsPath,
-                $pageWidth,
-                $pageHeight,
-                escapeshellarg($outputFile),
-                $fileList
-            );
-            
             // Update uploadedFiles for cleanup
             $uploadedFiles = $normalizedFiles;
-        } else {
-            // Original command without page size changes
-            $command = sprintf(
-                'TMPDIR=%s %s -dBATCH -dNOPAUSE -q -sDEVICE=pdfwrite -dPDFSETTINGS=/prepress -sOutputFile=%s %s 2>&1',
-                escapeshellarg($gsTempDir),
-                $gsPath,
-                escapeshellarg($outputFile),
-                $fileList
-            );
         }
         
-        // Log the command for debugging
-        logError('Merge PDF Command', ['command' => $command]);
-        
-        exec($command, $output, $returnCode);
+        // Use PHP-based PDF merging
+        try {
+            $mergedContent = mergePDFsWithPHP($uploadedFiles);
+            file_put_contents($outputFile, $mergedContent);
+        } catch (Exception $e) {
+            // If PHP merging fails, try a simple concatenation approach
+            $mergedContent = simplePDFMerge($uploadedFiles);
+            file_put_contents($outputFile, $mergedContent);
+        }
         
         // Clean up uploaded files
         foreach ($uploadedFiles as $file) {
             unlink($file);
         }
         
-        if ($returnCode !== 0 || !file_exists($outputFile)) {
-            logError('Merge PDF Failed', ['output' => $output, 'return_code' => $returnCode]);
-            throw new RuntimeException('PDF merge failed. ' . implode(' ', $output));
+        if (!file_exists($outputFile) || filesize($outputFile) < 100) {
+            throw new RuntimeException('PDF merge failed. The files might be corrupted or incompatible.');
         }
         
         $_SESSION['download_file'] = $outputFile;
@@ -436,6 +408,162 @@ require_once '../includes/header.php';
     </div>
 
 <?php
+
+// PHP-based PDF merging function
+function mergePDFsWithPHP($pdfFiles) {
+    $merger = new PDFMerger();
+    
+    foreach ($pdfFiles as $pdf) {
+        $merger->addPDF($pdf);
+    }
+    
+    return $merger->merge();
+}
+
+// Simple PDF merge fallback
+function simplePDFMerge($pdfFiles) {
+    $outputObjects = [];
+    $outputPages = [];
+    $pageTreeRefs = [];
+    $currentObjNum = 3; // Start after catalog and pages objects
+    
+    // Read and parse each PDF
+    foreach ($pdfFiles as $pdfFile) {
+        $content = file_get_contents($pdfFile);
+        $objects = parsePDFObjects($content);
+        
+        // Renumber objects and collect page references
+        $objMapping = [];
+        foreach ($objects as $oldNum => $obj) {
+            if (isset($obj['dict']['/Type']) && $obj['dict']['/Type'] === '/Page') {
+                $newNum = $currentObjNum++;
+                $objMapping[$oldNum] = $newNum;
+                $pageTreeRefs[] = "$newNum 0 R";
+                
+                // Update object number
+                $obj['num'] = $newNum;
+                $outputObjects[$newNum] = $obj;
+            }
+        }
+        
+        // Add other objects with updated references
+        foreach ($objects as $oldNum => $obj) {
+            if (!isset($objMapping[$oldNum])) {
+                $newNum = $currentObjNum++;
+                $objMapping[$oldNum] = $newNum;
+                
+                // Update object references in content
+                $obj['content'] = updateObjectReferences($obj['content'], $objMapping);
+                $obj['num'] = $newNum;
+                $outputObjects[$newNum] = $obj;
+            }
+        }
+    }
+    
+    // Create new PDF structure
+    $output = "%PDF-1.4\n%âÉåÒ\n";
+    
+    // Catalog object (1 0 obj)
+    $output .= "1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n";
+    
+    // Pages object (2 0 obj)
+    $output .= "2 0 obj\n<< /Type /Pages /Kids [" . implode(' ', $pageTreeRefs) . "] /Count " . count($pageTreeRefs) . " >>\nendobj\n";
+    
+    // Add all page and resource objects
+    foreach ($outputObjects as $num => $obj) {
+        $output .= "$num 0 obj\n" . $obj['content'] . "\nendobj\n";
+    }
+    
+    // Build xref table
+    $xrefPositions = [];
+    $currentPos = 0;
+    
+    // Find positions of all objects
+    for ($i = 1; $i <= $currentObjNum; $i++) {
+        $pattern = "/^$i 0 obj/m";
+        if (preg_match($pattern, $output, $matches, PREG_OFFSET_CAPTURE)) {
+            $xrefPositions[$i] = $matches[0][1];
+        }
+    }
+    
+    $xrefOffset = strlen($output);
+    $output .= "xref\n0 " . ($currentObjNum + 1) . "\n";
+    $output .= "0000000000 65535 f \n";
+    
+    for ($i = 1; $i <= $currentObjNum; $i++) {
+        if (isset($xrefPositions[$i])) {
+            $output .= sprintf("%010d 00000 n \n", $xrefPositions[$i]);
+        } else {
+            $output .= "0000000000 00000 f \n";
+        }
+    }
+    
+    // Trailer
+    $output .= "trailer\n<< /Size " . ($currentObjNum + 1) . " /Root 1 0 R >>\n";
+    $output .= "startxref\n$xrefOffset\n%%EOF\n";
+    
+    return $output;
+}
+
+// Parse PDF objects
+function parsePDFObjects($content) {
+    $objects = [];
+    
+    // Extract all objects
+    preg_match_all('/(\d+)\s+\d+\s+obj(.*?)endobj/s', $content, $matches, PREG_SET_ORDER);
+    
+    foreach ($matches as $match) {
+        $objNum = (int)$match[1];
+        $objContent = $match[2];
+        
+        // Parse dictionary if present
+        $dict = [];
+        if (preg_match('/<<(.*?)>>/s', $objContent, $dictMatch)) {
+            // Simple dictionary parsing
+            preg_match_all('/\/(\w+)\s+([^\/\s<>\[\]]+|\[[^\]]*\]|<<.*?>>)/s', $dictMatch[1], $dictItems, PREG_SET_ORDER);
+            foreach ($dictItems as $item) {
+                $dict['/' . $item[1]] = trim($item[2]);
+            }
+        }
+        
+        $objects[$objNum] = [
+            'num' => $objNum,
+            'content' => $objContent,
+            'dict' => $dict
+        ];
+    }
+    
+    return $objects;
+}
+
+// Update object references in content
+function updateObjectReferences($content, $mapping) {
+    foreach ($mapping as $oldNum => $newNum) {
+        $content = preg_replace("/\b$oldNum 0 R\b/", "$newNum 0 R", $content);
+    }
+    return $content;
+}
+
+// Simple PDF Merger class
+class PDFMerger {
+    private $files = [];
+    
+    public function addPDF($file) {
+        if (file_exists($file)) {
+            $this->files[] = $file;
+        }
+    }
+    
+    public function merge() {
+        if (empty($this->files)) {
+            throw new Exception('No files to merge');
+        }
+        
+        // For a more robust solution, use the simple merge
+        return simplePDFMerge($this->files);
+    }
+}
+
 // Include footer
 require_once '../includes/footer.php';
 ?>

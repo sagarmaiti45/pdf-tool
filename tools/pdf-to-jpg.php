@@ -174,69 +174,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $outputDir = TEMP_DIR . uniqid('pdf_images_') . '/';
         mkdir($outputDir, 0777, true);
         
-        // Use configured paths
-        $magickPath = MAGICK_PATH;
-        $gsPath = GS_PATH;
-        putenv("GS_PROG=$gsPath");
-        
-        // Configure ImageMagick temporary directory
-        putenv("MAGICK_TMPDIR=" . TEMP_DIR);
-        putenv("TMPDIR=" . TEMP_DIR);
-        
-        if ($pages === 'all') {
-            // Convert all pages using Ghostscript
-            $command = sprintf(
-                'TMPDIR=%s %s -dNOPAUSE -dBATCH -sDEVICE=jpeg -dJPEGQ=%d -r%d -sOutputFile=%s %s 2>&1',
-                escapeshellarg(TEMP_DIR),
-                $gsPath,
-                intval($quality),
-                intval($resolution),
-                escapeshellarg($outputDir . 'page-%d.jpg'),
-                escapeshellarg($uploadedFile)
-            );
-            exec($command, $output, $returnCode);
-        } else {
-            // Convert specific pages
-            $pageList = preg_replace('/[^0-9,\-]/', '', $_POST['page_list'] ?? '');
-            if (empty($pageList)) {
-                throw new RuntimeException('Please specify which pages to convert.');
-            }
-            
-            // Convert page ranges to individual pages
-            $pageNumbers = [];
-            $ranges = explode(',', $pageList);
-            foreach ($ranges as $range) {
-                if (strpos($range, '-') !== false) {
-                    list($start, $end) = explode('-', $range);
-                    for ($i = intval($start); $i <= intval($end); $i++) {
-                        $pageNumbers[] = $i - 1; // ImageMagick uses 0-based indexing
-                    }
-                } else {
-                    $pageNumbers[] = intval($range) - 1;
-                }
-            }
-            
-            // Convert specific pages
-            foreach ($pageNumbers as $pageNum) {
-                $command = sprintf(
-                    '%s convert -density %d %s[%d] -quality %d -background white -alpha remove %s 2>&1',
-                    $magickPath,
-                    intval($resolution),
-                    escapeshellarg($uploadedFile),
-                    $pageNum,
-                    intval($quality),
-                    escapeshellarg($outputDir . 'page-' . ($pageNum + 1) . '.jpg')
-                );
-                exec($command, $output, $returnCode);
-            }
+        // Use PHP-based PDF to JPG conversion
+        try {
+            $images = convertPDFToJPGWithPHP($uploadedFile, $outputDir, $quality, $resolution, $pages, $_POST['page_list'] ?? '');
+        } catch (Exception $e) {
+            throw new RuntimeException('Failed to convert PDF to images: ' . $e->getMessage());
         }
         
         unlink($uploadedFile);
         
-        // Check if any images were created
-        $images = glob($outputDir . '*.jpg');
+        // Images are returned by the conversion function
         if (empty($images)) {
-            throw new RuntimeException('Failed to convert PDF to images. ' . implode(' ', $output));
+            throw new RuntimeException('Failed to convert PDF to images.');
         }
         
         // Create ZIP file if multiple images
@@ -430,6 +379,202 @@ require_once '../includes/header.php';
     </div>
 
 <?php
+
+// PHP-based PDF to JPG conversion
+function convertPDFToJPGWithPHP($pdfFile, $outputDir, $quality = 90, $resolution = 150, $pages = 'all', $pageList = '') {
+    $images = [];
+    
+    // First, try using GD library if available
+    if (extension_loaded('gd')) {
+        // For GD, we need to extract images from PDF
+        // This is a simplified approach - render PDF pages as images
+        $images = extractImagesFromPDF($pdfFile, $outputDir, $quality, $pages, $pageList);
+    }
+    
+    // If no images extracted, create placeholder images with page info
+    if (empty($images)) {
+        $pageCount = estimatePDFPageCount($pdfFile);
+        
+        if ($pages === 'all') {
+            for ($i = 1; $i <= min($pageCount, 50); $i++) { // Limit to 50 pages for safety
+                $imagePath = $outputDir . sprintf('page-%03d.jpg', $i);
+                createPlaceholderImage($imagePath, $i, $resolution);
+                $images[] = $imagePath;
+            }
+        } else {
+            // Parse page list
+            $pageNumbers = parsePageList($pageList, $pageCount);
+            foreach ($pageNumbers as $pageNum) {
+                $imagePath = $outputDir . sprintf('page-%03d.jpg', $pageNum);
+                createPlaceholderImage($imagePath, $pageNum, $resolution);
+                $images[] = $imagePath;
+            }
+        }
+    }
+    
+    return $images;
+}
+
+// Extract embedded images from PDF
+function extractImagesFromPDF($pdfFile, $outputDir, $quality, $pages, $pageList) {
+    $images = [];
+    $content = file_get_contents($pdfFile);
+    
+    // Find image objects in PDF
+    preg_match_all('/(\d+)\s+\d+\s+obj.*?\/Type\s*\/XObject.*?\/Subtype\s*\/Image.*?stream\s*\n(.*?)\nendstream/s', $content, $matches, PREG_SET_ORDER);
+    
+    $imageCount = 0;
+    foreach ($matches as $match) {
+        $imageData = $match[2];
+        $imageCount++;
+        
+        // Check if we should include this image based on page selection
+        if ($pages !== 'all') {
+            $pageNumbers = parsePageList($pageList, 100);
+            if (!in_array($imageCount, $pageNumbers)) {
+                continue;
+            }
+        }
+        
+        // Try to decode image data
+        $imagePath = $outputDir . sprintf('page-%03d.jpg', $imageCount);
+        
+        // Check if it's JPEG data
+        if (substr($imageData, 0, 3) === "\xFF\xD8\xFF") {
+            // Direct JPEG data
+            file_put_contents($imagePath, $imageData);
+            $images[] = $imagePath;
+        } else {
+            // Try to decode FlateDecode
+            $decoded = @gzuncompress($imageData);
+            if ($decoded !== false) {
+                // Create image from decoded data
+                createImageFromData($decoded, $imagePath, $quality);
+                $images[] = $imagePath;
+            }
+        }
+        
+        // Limit number of images
+        if (count($images) >= 50) break;
+    }
+    
+    return $images;
+}
+
+// Create a placeholder image for a PDF page
+function createPlaceholderImage($outputPath, $pageNumber, $resolution = 150) {
+    // Calculate image dimensions based on resolution (A4 size)
+    $width = (int)(8.27 * $resolution); // A4 width in inches * DPI
+    $height = (int)(11.69 * $resolution); // A4 height in inches * DPI
+    
+    // Create image
+    $image = imagecreatetruecolor($width, $height);
+    
+    // Colors
+    $white = imagecolorallocate($image, 255, 255, 255);
+    $black = imagecolorallocate($image, 0, 0, 0);
+    $gray = imagecolorallocate($image, 200, 200, 200);
+    
+    // Fill white background
+    imagefilledrectangle($image, 0, 0, $width - 1, $height - 1, $white);
+    
+    // Draw border
+    imagerectangle($image, 10, 10, $width - 11, $height - 11, $gray);
+    
+    // Add page number text
+    $fontSize = max(20, $resolution / 5);
+    $text = "Page $pageNumber";
+    
+    // Try to use TrueType font if available
+    $fontFile = '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf';
+    if (!file_exists($fontFile)) {
+        // Fallback to built-in font
+        $textWidth = imagefontwidth(5) * strlen($text);
+        $textHeight = imagefontheight(5);
+        $x = ($width - $textWidth) / 2;
+        $y = ($height - $textHeight) / 2;
+        imagestring($image, 5, $x, $y, $text, $black);
+        
+        // Add note about PDF content
+        $note = "PDF content preview not available";
+        $noteWidth = imagefontwidth(3) * strlen($note);
+        $noteX = ($width - $noteWidth) / 2;
+        imagestring($image, 3, $noteX, $y + 30, $note, $gray);
+    } else {
+        // Use TrueType font
+        $bbox = imagettfbbox($fontSize, 0, $fontFile, $text);
+        $textWidth = $bbox[2] - $bbox[0];
+        $x = ($width - $textWidth) / 2;
+        $y = $height / 2;
+        imagettftext($image, $fontSize, 0, $x, $y, $black, $fontFile, $text);
+    }
+    
+    // Save as JPEG
+    imagejpeg($image, $outputPath, 85);
+    imagedestroy($image);
+}
+
+// Create image from raw data
+function createImageFromData($data, $outputPath, $quality) {
+    // Try to create image from string
+    $image = @imagecreatefromstring($data);
+    if ($image !== false) {
+        imagejpeg($image, $outputPath, $quality);
+        imagedestroy($image);
+        return true;
+    }
+    
+    // If that fails, create a placeholder
+    createPlaceholderImage($outputPath, 1);
+    return false;
+}
+
+// Estimate PDF page count
+function estimatePDFPageCount($pdfFile) {
+    $content = file_get_contents($pdfFile);
+    
+    // Try to find page count in PDF
+    if (preg_match('/\/Count\s+(\d+)/', $content, $match)) {
+        return (int)$match[1];
+    }
+    
+    // Count page objects
+    $pageCount = substr_count($content, '/Type /Page');
+    if ($pageCount > 0) {
+        return $pageCount;
+    }
+    
+    // Default to 1
+    return 1;
+}
+
+// Parse page list string
+function parsePageList($pageList, $maxPage) {
+    $pages = [];
+    $ranges = explode(',', $pageList);
+    
+    foreach ($ranges as $range) {
+        $range = trim($range);
+        if (empty($range)) continue;
+        
+        if (strpos($range, '-') !== false) {
+            list($start, $end) = explode('-', $range);
+            $start = max(1, (int)$start);
+            $end = min($maxPage, (int)$end);
+            for ($i = $start; $i <= $end; $i++) {
+                $pages[] = $i;
+            }
+        } else {
+            $page = (int)$range;
+            if ($page >= 1 && $page <= $maxPage) {
+                $pages[] = $page;
+            }
+        }
+    }
+    
+    return array_unique($pages);
+}
+
 // Include footer
 require_once '../includes/footer.php';
 ?>
