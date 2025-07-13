@@ -200,11 +200,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             validateFile($file, $allowedTypes);
             
             $extension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-            $uploadPath = UPLOAD_DIR . generateUniqueFileName($extension);
+            $uploadPath = TEMP_DIR . generateUniqueFileName($extension);
             
-            if (!move_uploaded_file($file['tmp_name'], $uploadPath)) {
-                throw new RuntimeException('Failed to move uploaded file.');
-            }
+            moveUploadedFile($file, $uploadPath);
             
             $uploadedFiles[] = $uploadPath;
         }

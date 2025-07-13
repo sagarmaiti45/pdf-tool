@@ -78,7 +78,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $pageCount = (int)($_POST['page_count'] ?? 1);
         
         // Create unique filename
-        $inputFile = UPLOAD_DIR . uniqid('split_input_') . '.pdf';
+        $inputFile = TEMP_DIR . uniqid('split_input_') . '.pdf';
         
         if (!move_uploaded_file($uploadedFile['tmp_name'], $inputFile)) {
             throw new RuntimeException('Failed to save uploaded file.');
@@ -114,7 +114,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Create ZIP file with all split PDFs
         if (count($splitFiles) === 1) {
             // Single file - provide direct download
-            $outputFile = UPLOAD_DIR . uniqid('split_') . '.pdf';
+            $outputFile = TEMP_DIR . uniqid('split_') . '.pdf';
             if (copy($splitFiles[0], $outputFile)) {
                 $_SESSION['temp_files'][] = $outputFile;
                 $downloadLink = 'download.php?file=' . urlencode(basename($outputFile));
@@ -124,7 +124,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Multiple files - create archive
             if (class_exists('ZipArchive')) {
                 // Use ZipArchive if available
-                $zipFile = UPLOAD_DIR . uniqid('split_') . '.zip';
+                $zipFile = TEMP_DIR . uniqid('split_') . '.zip';
                 $zip = new ZipArchive();
                 
                 if ($zip->open($zipFile, ZipArchive::CREATE) === TRUE) {
@@ -141,7 +141,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             } else {
                 // Alternative: Create a TAR archive using PHP
-                $tarFile = UPLOAD_DIR . uniqid('split_') . '.tar';
+                $tarFile = TEMP_DIR . uniqid('split_') . '.tar';
                 
                 try {
                     $tar = new PharData($tarFile);
@@ -154,7 +154,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $success = true;
                 } catch (Exception $e) {
                     // If TAR also fails, create a simple concatenated PDF with page markers
-                    $mergedFile = UPLOAD_DIR . uniqid('split_all_') . '.pdf';
+                    $mergedFile = TEMP_DIR . uniqid('split_all_') . '.pdf';
                     $gsPath = defined('GS_PATH') ? GS_PATH : '/usr/bin/gs';
                     
                     $command = $gsPath . " -dBATCH -dNOPAUSE -q -sDEVICE=pdfwrite " .
@@ -174,7 +174,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $errors[] = 'Note: Split files have been merged into a single PDF. Each original page is preserved in order.';
                     } else {
                         // Last resort: provide the first file
-                        $outputFile = UPLOAD_DIR . uniqid('split_') . '.pdf';
+                        $outputFile = TEMP_DIR . uniqid('split_') . '.pdf';
                         if (copy($splitFiles[0], $outputFile)) {
                             $_SESSION['temp_files'][] = $outputFile;
                             $downloadLink = 'download.php?file=' . urlencode(basename($outputFile));

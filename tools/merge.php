@@ -191,9 +191,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             
             validateFile($file, ['application/pdf']);
             
-            $uploadPath = UPLOAD_DIR . generateUniqueFileName('pdf');
-            if (!move_uploaded_file($file['tmp_name'], $uploadPath)) {
-                throw new RuntimeException('Failed to move uploaded file.');
+            $uploadPath = TEMP_DIR . generateUniqueFileName('pdf');
+            moveUploadedFile($file, $uploadPath);
             }
             
             $uploadedFiles[] = $uploadPath;

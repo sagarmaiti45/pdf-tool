@@ -1,26 +1,15 @@
 <?php
-require_once '../includes/config.php';
+session_start();
 require_once '../includes/functions.php';
 
-session_start();
-
-// Check if file parameter is provided
-if (!isset($_GET['file']) || empty($_GET['file'])) {
+// Check if download file is set in session
+if (!isset($_SESSION['download_file']) || !isset($_SESSION['download_name'])) {
     header('Location: ../index.php');
     exit;
 }
 
-$fileName = basename($_GET['file']);
-$filePath = UPLOAD_DIR . $fileName;
-
-// Security check - ensure the file is in the uploads directory
-$realPath = realpath($filePath);
-$uploadsPath = realpath(UPLOAD_DIR);
-
-if ($realPath === false || strpos($realPath, $uploadsPath) !== 0) {
-    header('Location: ../index.php');
-    exit;
-}
+$filePath = $_SESSION['download_file'];
+$downloadName = $_SESSION['download_name'];
 
 // Check if file exists
 if (!file_exists($filePath)) {
@@ -28,14 +17,8 @@ if (!file_exists($filePath)) {
     exit;
 }
 
-// Check if this file is in the session's temp files (security measure)
-if (!isset($_SESSION['temp_files']) || !in_array($filePath, $_SESSION['temp_files'])) {
-    header('Location: ../index.php');
-    exit;
-}
-
 // Determine the correct MIME type based on file extension
-$fileExtension = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
+$fileExtension = strtolower(pathinfo($downloadName, PATHINFO_EXTENSION));
 $contentType = 'application/octet-stream'; // default
 
 switch ($fileExtension) {
@@ -52,27 +35,11 @@ switch ($fileExtension) {
     case 'zip':
         $contentType = 'application/zip';
         break;
-    case 'tar':
-        $contentType = 'application/x-tar';
-        break;
-    case 'doc':
-    case 'docx':
-        $contentType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-        break;
-    case 'odt':
-        $contentType = 'application/vnd.oasis.opendocument.text';
-        break;
-    case 'txt':
-        $contentType = 'text/plain';
-        break;
-    case 'rtf':
-        $contentType = 'application/rtf';
-        break;
 }
 
 // Set headers for download
 header('Content-Type: ' . $contentType);
-header('Content-Disposition: attachment; filename="' . $fileName . '"');
+header('Content-Disposition: attachment; filename="' . $downloadName . '"');
 header('Content-Length: ' . filesize($filePath));
 header('Cache-Control: no-cache, no-store, must-revalidate');
 header('Pragma: no-cache');
@@ -84,13 +51,9 @@ readfile($filePath);
 // Clean up - remove file after download
 @unlink($filePath);
 
-// Remove from session temp files
-if (isset($_SESSION['temp_files'])) {
-    $key = array_search($filePath, $_SESSION['temp_files']);
-    if ($key !== false) {
-        unset($_SESSION['temp_files'][$key]);
-    }
-}
+// Clear session variables
+unset($_SESSION['download_file']);
+unset($_SESSION['download_name']);
 
 exit;
 ?>

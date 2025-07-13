@@ -92,7 +92,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         validateFile($_FILES['pdf_file'], ['application/pdf']);
         
         $originalName = pathinfo($_FILES['pdf_file']['name'], PATHINFO_FILENAME);
-        $uploadedFile = UPLOAD_DIR . generateUniqueFileName('pdf');
+        $uploadedFile = TEMP_DIR . generateUniqueFileName('pdf');
         
         moveUploadedFile($_FILES['pdf_file'], $uploadedFile);
         
