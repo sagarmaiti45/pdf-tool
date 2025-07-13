@@ -98,98 +98,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         $compressionLevel = $_POST['compression_level'] ?? 'medium';
         
-        // Try to check if FPDI is available
-        $fpdiAvailable = false;
-        if (file_exists(dirname(__DIR__) . '/vendor/autoload.php')) {
-            require_once dirname(__DIR__) . '/vendor/autoload.php';
-            $fpdiAvailable = class_exists('setasign\Fpdi\Tcpdf\Fpdi');
-        }
-        
         $outputFile = TEMP_DIR . generateUniqueFileName('pdf');
         
-        if ($fpdiAvailable) {
-            // Use FPDI for compression
-            try {
-                $pdf = new \setasign\Fpdi\Tcpdf\Fpdi();
-                $pageCount = $pdf->setSourceFile($uploadedFile);
-                
-                // Set compression based on level
-                $pdf->SetCompression(true);
-                
-                for ($pageNo = 1; $pageNo <= $pageCount; $pageNo++) {
-                    $pageId = $pdf->importPage($pageNo);
-                    $size = $pdf->getTemplateSize($pageId);
-                    
-                    $pdf->AddPage($size['orientation'], [$size['width'], $size['height']]);
-                    $pdf->useTemplate($pageId);
-                }
-                
-                // Output with compression
-                $pdf->Output($outputFile, 'F');
-                
-                $compressSuccess = true;
-            } catch (Exception $e) {
-                $compressSuccess = false;
-            }
-        } else {
-            $compressSuccess = false;
-        }
+        // Read PDF content
+        $pdfContent = file_get_contents($uploadedFile);
+        $originalSize = strlen($pdfContent);
         
-        // If FPDI fails or is not available, try basic PHP compression
-        if (!$compressSuccess) {
-            // Read PDF content
-            $pdfContent = file_get_contents($uploadedFile);
-            
-            // Basic PDF optimization - remove comments and compress streams
-            $optimizedContent = $pdfContent;
-            
-            // Remove PDF comments
-            $optimizedContent = preg_replace('/%%[^\r\n]*[\r\n]/', '', $optimizedContent);
-            
-            // Remove excessive whitespace
-            $optimizedContent = preg_replace('/\s+/', ' ', $optimizedContent);
-            
-            // Try to compress using gzcompress if available
-            if (function_exists('gzcompress')) {
-                // Find and compress stream objects
-                $pattern = '/stream\s*\n(.*?)\nendstream/s';
-                $optimizedContent = preg_replace_callback($pattern, function($matches) use ($compressionLevel) {
-                    $streamContent = $matches[1];
-                    $level = match($compressionLevel) {
-                        'low' => 9,
-                        'medium' => 6,
-                        'high' => 3,
-                        default => 6
-                    };
-                    $compressed = gzcompress($streamContent, $level);
-                    return "stream\n" . $compressed . "\nendstream";
-                }, $optimizedContent);
-            }
-            
-            file_put_contents($outputFile, $optimizedContent);
-        }
+        // Parse PDF structure
+        $compressedContent = compressPDF($pdfContent, $compressionLevel);
         
-        $originalSize = $_FILES['pdf_file']['size'];
-        $finalCompressedSize = filesize($outputFile);
+        // Write compressed content
+        file_put_contents($outputFile, $compressedContent);
         
-        // If compressed file is larger or not much smaller, use original
-        if ($finalCompressedSize >= $originalSize * 0.95) {
+        $finalSize = filesize($outputFile);
+        
+        // If compression didn't work well, use original
+        if ($finalSize >= $originalSize * 0.98) {
             copy($uploadedFile, $outputFile);
-            $finalCompressedSize = $originalSize;
+            $finalSize = $originalSize;
             $reduction = 0;
             
             $success = sprintf(
-                'PDF is already optimized. Original size maintained at %s. Limited compression available without Ghostscript.',
+                'PDF is already optimized. Original size maintained at %s.',
                 formatFileSize($originalSize)
             );
         } else {
-            $reduction = round((1 - $finalCompressedSize / $originalSize) * 100, 2);
+            $reduction = round((1 - $finalSize / $originalSize) * 100, 2);
             
             $success = sprintf(
                 'PDF compressed successfully! Size reduced by %s%% (from %s to %s)',
                 $reduction,
                 formatFileSize($originalSize),
-                formatFileSize($finalCompressedSize)
+                formatFileSize($finalSize)
             );
         }
         
@@ -204,6 +144,138 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = $e->getMessage();
         logError('Compress PDF Error', ['error' => $e->getMessage()]);
     }
+}
+
+function compressPDF($content, $level = 'medium') {
+    // Basic PDF structure parsing
+    $objects = [];
+    $xref = [];
+    
+    // Find all objects
+    preg_match_all('/(\d+)\s+(\d+)\s+obj\s*\n(.*?)\nendobj/s', $content, $matches, PREG_SET_ORDER);
+    
+    foreach ($matches as $match) {
+        $objNum = $match[1];
+        $objGen = $match[2];
+        $objContent = $match[3];
+        
+        // Process different object types
+        if (strpos($objContent, 'stream') !== false) {
+            // Handle stream objects
+            $objContent = compressStreamObject($objContent, $level);
+        }
+        
+        $objects[$objNum] = [
+            'num' => $objNum,
+            'gen' => $objGen,
+            'content' => $objContent
+        ];
+    }
+    
+    // Rebuild PDF
+    $output = "%PDF-1.4\n";
+    $offset = strlen($output);
+    
+    // Write objects
+    foreach ($objects as $obj) {
+        $xref[$obj['num']] = $offset;
+        $objStr = $obj['num'] . ' ' . $obj['gen'] . " obj\n" . $obj['content'] . "\nendobj\n";
+        $output .= $objStr;
+        $offset += strlen($objStr);
+    }
+    
+    // Write xref table
+    $xrefOffset = $offset;
+    $output .= "xref\n";
+    $output .= "0 " . (count($xref) + 1) . "\n";
+    $output .= "0000000000 65535 f \n";
+    
+    foreach ($xref as $num => $pos) {
+        $output .= sprintf("%010d 00000 n \n", $pos);
+    }
+    
+    // Write trailer
+    $output .= "trailer\n";
+    $output .= "<<\n";
+    $output .= "/Size " . (count($xref) + 1) . "\n";
+    
+    // Extract root and info from original
+    if (preg_match('/\/Root\s+(\d+)\s+\d+\s+R/', $content, $rootMatch)) {
+        $output .= "/Root " . $rootMatch[1] . " 0 R\n";
+    }
+    if (preg_match('/\/Info\s+(\d+)\s+\d+\s+R/', $content, $infoMatch)) {
+        $output .= "/Info " . $infoMatch[1] . " 0 R\n";
+    }
+    
+    $output .= ">>\n";
+    $output .= "startxref\n";
+    $output .= $xrefOffset . "\n";
+    $output .= "%%EOF\n";
+    
+    return $output;
+}
+
+function compressStreamObject($objContent, $level) {
+    // Extract stream content
+    if (preg_match('/stream\s*\n(.*?)\nendstream/s', $objContent, $streamMatch)) {
+        $streamData = $streamMatch[1];
+        
+        // Check if already compressed
+        if (strpos($objContent, '/FlateDecode') !== false) {
+            // Already compressed, try to recompress with better settings
+            $decompressed = @gzuncompress($streamData);
+            if ($decompressed !== false) {
+                $compressionLevel = match($level) {
+                    'low' => 9,
+                    'medium' => 6,
+                    'high' => 3,
+                    default => 6
+                };
+                $recompressed = gzcompress($decompressed, $compressionLevel);
+                
+                if (strlen($recompressed) < strlen($streamData)) {
+                    $streamData = $recompressed;
+                }
+            }
+        } else {
+            // Not compressed, compress it
+            $compressionLevel = match($level) {
+                'low' => 9,
+                'medium' => 6,
+                'high' => 3,
+                default => 6
+            };
+            
+            $compressed = gzcompress($streamData, $compressionLevel);
+            
+            // Update dictionary
+            $dictPattern = '/<<(.*?)>>/s';
+            if (preg_match($dictPattern, $objContent, $dictMatch)) {
+                $dict = $dictMatch[1];
+                
+                // Add FlateDecode filter
+                if (!strpos($dict, '/Filter')) {
+                    $dict .= "\n/Filter /FlateDecode";
+                }
+                
+                // Update length
+                $dict = preg_replace('/\/Length\s+\d+/', '/Length ' . strlen($compressed), $dict);
+                
+                $objContent = preg_replace($dictPattern, '<<' . $dict . '>>', $objContent);
+            }
+            
+            $streamData = $compressed;
+        }
+        
+        // Replace stream content
+        $objContent = preg_replace(
+            '/stream\s*\n.*?\nendstream/s',
+            "stream\n" . $streamData . "\nendstream",
+            $objContent
+        );
+    }
+    
+    return $objContent;
 }
 
 $csrfToken = generateCSRFToken();
@@ -271,7 +343,7 @@ require_once '../includes/header.php';
                                 <option value="high">High Quality</option>
                             </select>
                             <small style="color: #666; display: block; margin-top: 5px;">
-                                <i class="fas fa-info-circle"></i> Basic compression without external tools. Results may vary.
+                                <i class="fas fa-info-circle"></i> Using PHP-based compression. Results depend on PDF content.
                             </small>
                         </div>
                     </div>
