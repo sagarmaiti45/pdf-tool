@@ -74,14 +74,6 @@ $additional_scripts = '<script>
         compressForm.addEventListener(\'submit\', (e) => {
             compressBtn.disabled = true;
             loader.style.display = \'block\';
-            // progressContainer.style.display = \'block\';
-            
-            // let progress = 0;
-            // const interval = setInterval(() => {
-            //     progress += Math.random() * 15;
-            //     if (progress > 90) progress = 90;
-            //     document.getElementById(\'progressBar\').style.width = progress + \'%\';
-            // }, 300);
         });
     </script>';
 
@@ -106,158 +98,88 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         $compressionLevel = $_POST['compression_level'] ?? 'medium';
         
-        // More aggressive compression settings
-        $settings = match($compressionLevel) {
-            'low' => [
-                'quality' => 'screen',
-                'imageResolution' => 72,
-                'imageQuality' => 0.5,
-                'colorImageDownsample' => 'Average',
-                'grayImageDownsample' => 'Average',
-                'monoImageDownsample' => 'Subsample'
-            ],
-            'medium' => [
-                'quality' => 'ebook',
-                'imageResolution' => 150,
-                'imageQuality' => 0.7,
-                'colorImageDownsample' => 'Bicubic',
-                'grayImageDownsample' => 'Bicubic',
-                'monoImageDownsample' => 'Bicubic'
-            ],
-            'high' => [
-                'quality' => 'prepress',
-                'imageResolution' => 300,
-                'imageQuality' => 0.85,
-                'colorImageDownsample' => 'Bicubic',
-                'grayImageDownsample' => 'Bicubic',
-                'monoImageDownsample' => 'Bicubic'
-            ],
-            default => [
-                'quality' => 'ebook',
-                'imageResolution' => 150,
-                'imageQuality' => 0.7,
-                'colorImageDownsample' => 'Bicubic',
-                'grayImageDownsample' => 'Bicubic',
-                'monoImageDownsample' => 'Bicubic'
-            ]
-        };
+        // Try to check if FPDI is available
+        $fpdiAvailable = false;
+        if (file_exists(dirname(__DIR__) . '/vendor/autoload.php')) {
+            require_once dirname(__DIR__) . '/vendor/autoload.php';
+            $fpdiAvailable = class_exists('setasign\Fpdi\Tcpdf\Fpdi');
+        }
         
         $outputFile = TEMP_DIR . generateUniqueFileName('pdf');
         
-        $gsPath = '/opt/homebrew/bin/gs';
-        if (!file_exists($gsPath)) {
-            $gsPath = 'gs';
-        }
-        
-        // Set temp directory for Ghostscript
-        $gsTempDir = TEMP_DIR;
-        putenv("TMPDIR=$gsTempDir");
-        putenv("TEMP=$gsTempDir");
-        putenv("TMP=$gsTempDir");
-        
-        // Build command with aggressive compression
-        if ($compressionLevel === 'low') {
-            // Ultra aggressive compression for maximum size reduction
-            $command = sprintf(
-                'TMPDIR=%s %s -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 ' .
-                '-dPDFSETTINGS=/screen ' .
-                '-dColorImageResolution=72 -dGrayImageResolution=72 -dMonoImageResolution=150 ' .
-                '-dDownsampleColorImages=true -dDownsampleGrayImages=true -dDownsampleMonoImages=true ' .
-                '-dColorImageDownsampleType=/Bicubic -dGrayImageDownsampleType=/Bicubic ' .
-                '-dColorConversionStrategy=/RGB -dProcessColorModel=/DeviceRGB ' .
-                '-dEmbedAllFonts=false -dSubsetFonts=true -dCompressFonts=true ' .
-                '-dDetectDuplicateImages=true -dAutoRotatePages=/None ' .
-                '-dColorImageFilter=/DCTEncode -dGrayImageFilter=/DCTEncode ' .
-                '-dJPEGQ=0.4 -dImageQuality=0.4 ' .
-                '-dASCII85EncodePages=false -dCompressPages=true ' .
-                '-dOptimize=true -dUseFlateCompression=true ' .
-                '-dNOPAUSE -dQUIET -dBATCH -sOutputFile=%s %s 2>&1',
-                escapeshellarg($gsTempDir),
-                $gsPath,
-                escapeshellarg($outputFile),
-                escapeshellarg($uploadedFile)
-            );
-        } else {
-            // Standard compression with image quality settings
-            $command = sprintf(
-                'TMPDIR=%s %s -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 ' .
-                '-dPDFSETTINGS=/%s ' .
-                '-dColorImageResolution=%d -dGrayImageResolution=%d -dMonoImageResolution=%d ' .
-                '-dDownsampleColorImages=true -dDownsampleGrayImages=true -dDownsampleMonoImages=true ' .
-                '-dColorImageDownsampleType=/%s -dGrayImageDownsampleType=/%s -dMonoImageDownsampleType=/%s ' .
-                '-dJPEGQ=%f -dColorImageFilter=/DCTEncode -dGrayImageFilter=/DCTEncode ' .
-                '-dCompressFonts=true -dSubsetFonts=true ' .
-                '-dDetectDuplicateImages=true -dAutoRotatePages=/None ' .
-                '-dOptimize=true -dUseFlateCompression=true ' .
-                '-dNOPAUSE -dQUIET -dBATCH -sOutputFile=%s %s 2>&1',
-                escapeshellarg($gsTempDir),
-                $gsPath,
-                $settings['quality'],
-                $settings['imageResolution'],
-                $settings['imageResolution'],
-                $settings['imageResolution'],
-                $settings['colorImageDownsample'],
-                $settings['grayImageDownsample'],
-                $settings['monoImageDownsample'],
-                $settings['imageQuality'],
-                escapeshellarg($outputFile),
-                escapeshellarg($uploadedFile)
-            );
-        }
-        
-        exec($command, $output, $returnCode);
-        
-        if ($returnCode !== 0) {
-            $errorMsg = 'PDF compression failed. ';
-            if (!empty($output)) {
-                $errorMsg .= 'Error: ' . implode(' ', $output);
-            } else {
-                $errorMsg .= 'Make sure Ghostscript is installed.';
-            }
-            throw new RuntimeException($errorMsg);
-        }
-        
-        // If compression didn't reduce size much, try alternative method
-        $originalSize = filesize($uploadedFile);
-        $compressedSize = filesize($outputFile);
-        
-        if ($compressedSize >= $originalSize * 0.95) {
-            // Try ps2pdf for better compression
-            $altOutputFile = TEMP_DIR . 'alt_' . generateUniqueFileName('pdf');
-            $ps2pdfCommand = sprintf(
-                'TMPDIR=%s ps2pdf -dPDFSETTINGS=/ebook -dEmbedAllFonts=false -dCompressFonts=true %s %s 2>&1',
-                escapeshellarg($gsTempDir),
-                escapeshellarg($uploadedFile),
-                escapeshellarg($altOutputFile)
-            );
-            
-            exec($ps2pdfCommand, $ps2pdfOutput, $ps2pdfReturn);
-            
-            if ($ps2pdfReturn === 0 && file_exists($altOutputFile)) {
-                $altSize = filesize($altOutputFile);
-                if ($altSize < $compressedSize) {
-                    unlink($outputFile);
-                    $outputFile = $altOutputFile;
-                    $compressedSize = $altSize;
-                } else {
-                    unlink($altOutputFile);
+        if ($fpdiAvailable) {
+            // Use FPDI for compression
+            try {
+                $pdf = new \setasign\Fpdi\Tcpdf\Fpdi();
+                $pageCount = $pdf->setSourceFile($uploadedFile);
+                
+                // Set compression based on level
+                $pdf->SetCompression(true);
+                
+                for ($pageNo = 1; $pageNo <= $pageCount; $pageNo++) {
+                    $pageId = $pdf->importPage($pageNo);
+                    $size = $pdf->getTemplateSize($pageId);
+                    
+                    $pdf->AddPage($size['orientation'], [$size['width'], $size['height']]);
+                    $pdf->useTemplate($pageId);
                 }
+                
+                // Output with compression
+                $pdf->Output($outputFile, 'F');
+                
+                $compressSuccess = true;
+            } catch (Exception $e) {
+                $compressSuccess = false;
             }
+        } else {
+            $compressSuccess = false;
+        }
+        
+        // If FPDI fails or is not available, try basic PHP compression
+        if (!$compressSuccess) {
+            // Read PDF content
+            $pdfContent = file_get_contents($uploadedFile);
+            
+            // Basic PDF optimization - remove comments and compress streams
+            $optimizedContent = $pdfContent;
+            
+            // Remove PDF comments
+            $optimizedContent = preg_replace('/%%[^\r\n]*[\r\n]/', '', $optimizedContent);
+            
+            // Remove excessive whitespace
+            $optimizedContent = preg_replace('/\s+/', ' ', $optimizedContent);
+            
+            // Try to compress using gzcompress if available
+            if (function_exists('gzcompress')) {
+                // Find and compress stream objects
+                $pattern = '/stream\s*\n(.*?)\nendstream/s';
+                $optimizedContent = preg_replace_callback($pattern, function($matches) use ($compressionLevel) {
+                    $streamContent = $matches[1];
+                    $level = match($compressionLevel) {
+                        'low' => 9,
+                        'medium' => 6,
+                        'high' => 3,
+                        default => 6
+                    };
+                    $compressed = gzcompress($streamContent, $level);
+                    return "stream\n" . $compressed . "\nendstream";
+                }, $optimizedContent);
+            }
+            
+            file_put_contents($outputFile, $optimizedContent);
         }
         
         $originalSize = $_FILES['pdf_file']['size'];
         $finalCompressedSize = filesize($outputFile);
         
-        // If compressed file is larger, use original file instead
-        if ($finalCompressedSize >= $originalSize) {
-            // Copy original file as output
-            unlink($outputFile);
+        // If compressed file is larger or not much smaller, use original
+        if ($finalCompressedSize >= $originalSize * 0.95) {
             copy($uploadedFile, $outputFile);
             $finalCompressedSize = $originalSize;
             $reduction = 0;
             
             $success = sprintf(
-                'PDF is already optimized. Original size maintained at %s. No further compression possible.',
+                'PDF is already optimized. Original size maintained at %s. Limited compression available without Ghostscript.',
                 formatFileSize($originalSize)
             );
         } else {
@@ -344,12 +266,12 @@ require_once '../includes/header.php';
                         <div class="form-group" style="margin-top: 2rem;">
                             <label class="form-label">Compression Level</label>
                             <select name="compression_level" class="form-control">
-                                <option value="low">Maximum Compression (72 DPI - Up to 90% reduction)</option>
-                                <option value="medium" selected>Balanced (150 DPI - 50-70% reduction)</option>
-                                <option value="high">High Quality (300 DPI - 20-40% reduction)</option>
+                                <option value="low">Maximum Compression</option>
+                                <option value="medium" selected>Balanced</option>
+                                <option value="high">High Quality</option>
                             </select>
                             <small style="color: #666; display: block; margin-top: 5px;">
-                                <i class="fas fa-info-circle"></i> Compression rate depends on your PDF content. PDFs with images compress more than text-only PDFs.
+                                <i class="fas fa-info-circle"></i> Basic compression without external tools. Results may vary.
                             </small>
                         </div>
                     </div>
