@@ -16,14 +16,76 @@ $errors = [];
 $success = false;
 $downloadLink = '';
 
+// Function to convert text to simple PDF using Ghostscript
+function textToPDF($text, $outputFile) {
+    // Create a temporary PostScript file
+    $psFile = tempnam(TEMP_DIR, 'text_') . '.ps';
+    
+    // Create PostScript content
+    $ps = "%!PS-Adobe-3.0\n";
+    $ps .= "%%BoundingBox: 0 0 612 792\n";
+    $ps .= "%%Pages: 1\n";
+    $ps .= "%%EndComments\n\n";
+    $ps .= "/Helvetica findfont 12 scalefont setfont\n";
+    $ps .= "50 750 moveto\n";
+    
+    // Split text into lines and pages
+    $lines = explode("\n", $text);
+    $y = 750;
+    $pageNum = 1;
+    
+    foreach ($lines as $line) {
+        if ($y < 50) {
+            $ps .= "showpage\n";
+            $pageNum++;
+            $ps .= "%%Page: $pageNum $pageNum\n";
+            $ps .= "/Helvetica findfont 12 scalefont setfont\n";
+            $ps .= "50 750 moveto\n";
+            $y = 750;
+        }
+        
+        // Escape special characters
+        $line = str_replace(['(', ')', '\\'], ['\\(', '\\)', '\\\\'], $line);
+        $line = substr($line, 0, 80); // Limit line length
+        
+        $ps .= "($line) show\n";
+        $ps .= "50 " . ($y -= 15) . " moveto\n";
+    }
+    
+    $ps .= "showpage\n";
+    $ps .= "%%EOF\n";
+    
+    // Write PostScript file
+    file_put_contents($psFile, $ps);
+    
+    // Convert PS to PDF using Ghostscript
+    $gsPath = defined('GS_PATH') ? GS_PATH : '/usr/bin/gs';
+    $command = $gsPath . " -dNOPAUSE -dBATCH -sDEVICE=pdfwrite -sOutputFile=" . 
+              escapeshellarg($outputFile) . " " . escapeshellarg($psFile) . " 2>&1";
+    
+    exec($command, $output, $returnVar);
+    
+    // Clean up
+    @unlink($psFile);
+    
+    return $returnVar === 0 && file_exists($outputFile);
+}
+
 // Function to convert document to PDF
 function convertDocToPDF($inputFile, $outputFile) {
     global $errors;
     
-    // Try different conversion methods
-    $converted = false;
+    $extension = strtolower(pathinfo($inputFile, PATHINFO_EXTENSION));
     
-    // Method 1: LibreOffice/soffice
+    // For text files, use our custom converter
+    if ($extension === 'txt') {
+        $content = file_get_contents($inputFile);
+        if ($content !== false) {
+            return textToPDF($content, $outputFile);
+        }
+    }
+    
+    // For other formats, try LibreOffice if available
     $sofficeCommands = [
         'soffice',
         '/usr/bin/soffice',
@@ -51,70 +113,24 @@ function convertDocToPDF($inputFile, $outputFile) {
                 if ($expectedOutput !== $outputFile) {
                     rename($expectedOutput, $outputFile);
                 }
-                $converted = true;
-                break;
+                return true;
             }
         }
     }
     
-    // Method 2: unoconv
-    if (!$converted) {
-        exec("which unoconv 2>/dev/null", $output, $returnVar);
-        if ($returnVar === 0) {
-            $command = "unoconv -f pdf -o " . escapeshellarg($outputFile) . " " . 
-                      escapeshellarg($inputFile) . " 2>&1";
-            exec($command, $output, $returnVar);
-            
-            if ($returnVar === 0 && file_exists($outputFile)) {
-                $converted = true;
-            }
-        }
+    // If we can't convert DOC/DOCX without LibreOffice, create a simple PDF with a message
+    if (in_array($extension, ['doc', 'docx', 'odt', 'rtf'])) {
+        $message = "Document Conversion Notice\n\n";
+        $message .= "The file '$inputFile' requires LibreOffice for conversion.\n\n";
+        $message .= "LibreOffice is not installed on this server.\n\n";
+        $message .= "To convert DOC/DOCX files, please:\n";
+        $message .= "1. Install LibreOffice on the server, or\n";
+        $message .= "2. Convert your document to TXT format first\n";
+        
+        return textToPDF($message, $outputFile);
     }
     
-    // Method 3: For text files, create PDF using PHP
-    if (!$converted && in_array(strtolower(pathinfo($inputFile, PATHINFO_EXTENSION)), ['txt', 'text'])) {
-        // Simple text to PDF conversion
-        $content = file_get_contents($inputFile);
-        if ($content !== false) {
-            // Create a simple PDF using Ghostscript
-            $psFile = tempnam(TEMP_DIR, 'text_') . '.ps';
-            
-            // Create PostScript file
-            $ps = "%!PS\n";
-            $ps .= "/Courier findfont 10 scalefont setfont\n";
-            $ps .= "50 750 moveto\n";
-            
-            $lines = explode("\n", $content);
-            $y = 750;
-            foreach ($lines as $line) {
-                if ($y < 50) {
-                    $ps .= "showpage\n";
-                    $ps .= "50 750 moveto\n";
-                    $y = 750;
-                }
-                $ps .= "(" . addslashes(substr($line, 0, 80)) . ") show\n";
-                $ps .= "50 " . ($y -= 12) . " moveto\n";
-            }
-            $ps .= "showpage\n";
-            
-            file_put_contents($psFile, $ps);
-            
-            // Convert PS to PDF
-            $gsPath = defined('GS_PATH') ? GS_PATH : '/usr/bin/gs';
-            $command = $gsPath . " -dNOPAUSE -dBATCH -sDEVICE=pdfwrite -sOutputFile=" . 
-                      escapeshellarg($outputFile) . " " . escapeshellarg($psFile) . " 2>&1";
-            
-            exec($command, $output, $returnVar);
-            
-            @unlink($psFile);
-            
-            if ($returnVar === 0 && file_exists($outputFile)) {
-                $converted = true;
-            }
-        }
-    }
-    
-    return $converted;
+    return false;
 }
 
 // Handle form submission
@@ -169,7 +185,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ];
                 $_SESSION['temp_files'][] = $outputFile;
             } else {
-                $errors[] = 'Failed to convert ' . $uploadedFiles['name'][$i] . '. LibreOffice may not be installed.';
+                $errors[] = 'Failed to convert ' . $uploadedFiles['name'][$i];
             }
         }
         
@@ -180,26 +196,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $downloadLink = 'download.php?file=' . urlencode(basename($convertedFiles[0]['pdf']));
                 $success = true;
             } else {
-                // Multiple files - create ZIP
-                $zipFile = UPLOAD_DIR . uniqid('doc_pdfs_') . '.zip';
-                $zip = new ZipArchive();
-                
-                if ($zip->open($zipFile, ZipArchive::CREATE) === TRUE) {
-                    foreach ($convertedFiles as $file) {
-                        $pdfName = pathinfo($file['original'], PATHINFO_FILENAME) . '.pdf';
-                        $zip->addFile($file['pdf'], $pdfName);
-                    }
-                    $zip->close();
+                // Multiple files - create ZIP if available
+                if (class_exists('ZipArchive')) {
+                    $zipFile = UPLOAD_DIR . uniqid('doc_pdfs_') . '.zip';
+                    $zip = new ZipArchive();
                     
-                    $_SESSION['temp_files'][] = $zipFile;
-                    $downloadLink = 'download.php?file=' . urlencode(basename($zipFile));
+                    if ($zip->open($zipFile, ZipArchive::CREATE) === TRUE) {
+                        foreach ($convertedFiles as $file) {
+                            $pdfName = pathinfo($file['original'], PATHINFO_FILENAME) . '.pdf';
+                            $zip->addFile($file['pdf'], $pdfName);
+                        }
+                        $zip->close();
+                        
+                        $_SESSION['temp_files'][] = $zipFile;
+                        $downloadLink = 'download.php?file=' . urlencode(basename($zipFile));
+                        $success = true;
+                    }
+                } else {
+                    // No ZIP support - provide first file
+                    $downloadLink = 'download.php?file=' . urlencode(basename($convertedFiles[0]['pdf']));
                     $success = true;
+                    if (count($convertedFiles) > 1) {
+                        $errors[] = 'Note: Only the first file is available for download. ZIP support not available.';
+                    }
                 }
             }
         }
         
         if (!$success && empty($errors)) {
-            throw new RuntimeException('No files were successfully converted. Please ensure LibreOffice is installed on the server.');
+            throw new RuntimeException('No files were successfully converted.');
         }
         
     } catch (Exception $e) {
@@ -256,15 +281,13 @@ document.addEventListener('DOMContentLoaded', function() {
             for (let i = 0; i < files.length; i++) {
                 const fileItem = document.createElement('div');
                 fileItem.className = 'file-item';
-                fileItem.innerHTML = `
-                    <div class="file-info">
-                        <i class="fas fa-file-word file-icon"></i>
-                        <div>
-                            <div class="file-name">${files[i].name}</div>
-                            <div class="file-size">${formatFileSize(files[i].size)}</div>
-                        </div>
-                    </div>
-                `;
+                fileItem.innerHTML = '<div class="file-info">' +
+                    '<i class="fas fa-file-word file-icon"></i>' +
+                    '<div>' +
+                        '<div class="file-name">' + files[i].name + '</div>' +
+                        '<div class="file-size">' + formatFileSize(files[i].size) + '</div>' +
+                    '</div>' +
+                '</div>';
                 fileList.appendChild(fileItem);
             }
             
@@ -365,24 +388,24 @@ HTML;
                 <div style="margin-top: 3rem; padding-top: 2rem; border-top: 1px solid #e0e0e0;">
                     <h3>Supported Formats:</h3>
                     <ul style="line-height: 2;">
-                        <li><strong>DOC/DOCX:</strong> Microsoft Word documents</li>
-                        <li><strong>ODT:</strong> OpenDocument Text files</li>
-                        <li><strong>RTF:</strong> Rich Text Format files</li>
-                        <li><strong>TXT:</strong> Plain text files</li>
+                        <li><strong>TXT:</strong> Plain text files (fully supported)</li>
+                        <li><strong>DOC/DOCX:</strong> Microsoft Word documents (requires LibreOffice)</li>
+                        <li><strong>ODT:</strong> OpenDocument Text files (requires LibreOffice)</li>
+                        <li><strong>RTF:</strong> Rich Text Format files (requires LibreOffice)</li>
                     </ul>
                     
                     <h3 style="margin-top: 2rem;">Features:</h3>
                     <ul style="line-height: 2;">
-                        <li>Batch conversion - convert multiple files at once</li>
-                        <li>Preserves document formatting (when possible)</li>
-                        <li>Fast and secure processing</li>
+                        <li>Text files are converted directly to PDF</li>
+                        <li>Batch conversion support</li>
+                        <li>Secure processing</li>
                         <li>Automatic cleanup after download</li>
                     </ul>
                     
                     <div class="alert alert-info" style="margin-top: 2rem;">
                         <i class="fas fa-info-circle"></i>
-                        <strong>Note:</strong> This feature requires LibreOffice to be installed on the server. 
-                        If conversions fail, please try again later or contact support.
+                        <strong>Note:</strong> TXT files can be converted without any external dependencies. 
+                        For DOC/DOCX files, LibreOffice must be installed on the server.
                     </div>
                 </div>
             <?php endif; ?>

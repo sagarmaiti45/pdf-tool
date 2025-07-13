@@ -160,14 +160,8 @@ function convertPDFToDoc($inputFile, $outputFile, $format = 'txt') {
             case 'txt':
                 return file_put_contents($outputFile, $text) !== false;
                 
-            case 'doc':
-            case 'docx':
-                // For DOC/DOCX, create RTF file with appropriate extension
-                // RTF is compatible with Word and doesn't require ZipArchive
-                return createRTF($text, $outputFile);
-                
             case 'rtf':
-                // Direct RTF creation
+                // Create RTF file
                 return createRTF($text, $outputFile);
                 
             default:
@@ -199,7 +193,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $outputFormat = $_POST['output_format'] ?? 'txt';
         
         // Validate output format
-        $allowedFormats = ['txt', 'docx', 'doc', 'rtf'];
+        $allowedFormats = ['txt', 'rtf'];
         if (!in_array($outputFormat, $allowedFormats)) {
             throw new RuntimeException('Invalid output format selected.');
         }
@@ -379,11 +373,9 @@ HTML;
                         <label class="form-label">Output Format</label>
                         <select name="output_format" class="form-control">
                             <option value="txt">TXT - Plain Text (Recommended)</option>
-                            <option value="docx">DOCX - Word 2007+ (RTF Compatible)</option>
-                            <option value="doc">DOC - Word 97-2003 (RTF Compatible)</option>
-                            <option value="rtf">RTF - Rich Text Format</option>
+                            <option value="rtf">RTF - Rich Text Format (Word Compatible)</option>
                         </select>
-                        <small style="color: #666;">DOC/DOCX files are created in RTF format for maximum compatibility</small>
+                        <small style="color: #666;">RTF files can be opened in Microsoft Word and other word processors</small>
                     </div>
 
                     <div style="text-align: center; margin-top: 2rem;">
