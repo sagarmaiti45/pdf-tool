@@ -1,4 +1,10 @@
 <?php
+// Enable error reporting only in development
+if (defined('ENVIRONMENT') && ENVIRONMENT === 'development') {
+    ini_set('display_errors', 1);
+    error_reporting(E_ALL);
+}
+
 // Set page-specific variables
 $page_title = 'Split PDF - Triniva';
 $page_description = 'Split PDF files into multiple documents. Split by individual pages, custom ranges, or fixed page count.';

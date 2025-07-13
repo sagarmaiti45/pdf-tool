@@ -1,4 +1,10 @@
 <?php
+// Enable error reporting only in development
+if (defined('ENVIRONMENT') && ENVIRONMENT === 'development') {
+    ini_set('display_errors', 1);
+    error_reporting(E_ALL);
+}
+
 // Set page-specific variables
 $page_title = 'PDF to DOC - Triniva';
 $page_description = 'Convert PDF files to Word documents. Extract text from PDFs into editable DOC, DOCX, or TXT formats.';
