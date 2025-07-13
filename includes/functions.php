@@ -1,8 +1,8 @@
 <?php
 session_start();
 
-define('UPLOAD_DIR', dirname(__DIR__) . '/uploads/');
-define('TEMP_DIR', dirname(__DIR__) . '/temp/');
+define('UPLOAD_DIR', sys_get_temp_dir() . '/uploads/');
+define('TEMP_DIR', sys_get_temp_dir() . '/temp/');
 define('MAX_FILE_SIZE', 50 * 1024 * 1024); // 50MB
 define('ALLOWED_EXTENSIONS', ['pdf', 'jpg', 'jpeg', 'png']);
 
@@ -137,24 +137,17 @@ function verifyCSRFToken($token) {
 }
 
 function logError($message, $context = []) {
-    $logFile = dirname(__DIR__) . '/logs/error.log';
-    $logDir = dirname($logFile);
-    
-    if (!file_exists($logDir)) {
-        mkdir($logDir, 0755, true);
-        chmod($logDir, 0755);
+    try {
+        $logFile = sys_get_temp_dir() . '/error.log';
+        
+        $timestamp = date('Y-m-d H:i:s');
+        $contextStr = !empty($context) ? json_encode($context) : '';
+        $logMessage = "[$timestamp] $message $contextStr" . PHP_EOL;
+        
+        error_log($logMessage, 3, $logFile);
+    } catch (Exception $e) {
+        error_log("Logging failed: " . $e->getMessage());
     }
-    
-    $timestamp = date('Y-m-d H:i:s');
-    $contextStr = !empty($context) ? json_encode($context) : '';
-    $logMessage = "[$timestamp] $message $contextStr" . PHP_EOL;
-    
-    if (!file_exists($logFile)) {
-        touch($logFile);
-        chmod($logFile, 0644);
-    }
-    
-    file_put_contents($logFile, $logMessage, FILE_APPEND | LOCK_EX);
 }
 
 cleanupOldFiles(UPLOAD_DIR);
