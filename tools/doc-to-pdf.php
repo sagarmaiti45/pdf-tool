@@ -1,362 +1,395 @@
 <?php
+// Set page-specific variables
+$page_title = 'DOC to PDF - Triniva';
+$page_description = 'Convert Word documents to PDF format. Support for DOC, DOCX, ODT, RTF and TXT files.';
+
+// Include configuration and header
 require_once '../includes/config.php';
 require_once '../includes/functions.php';
 require_once '../includes/header.php';
 
-// Initialize variables
-$uploadSuccess = false;
-$errors = [];
-$processedFile = '';
+// Generate CSRF token
+$csrfToken = generateCSRFToken();
 
-// Function to convert DOC/DOCX to PDF using LibreOffice
-function convertDocToPDF($inputFile) {
+// Initialize variables
+$errors = [];
+$success = false;
+$downloadLink = '';
+
+// Function to convert document to PDF
+function convertDocToPDF($inputFile, $outputFile) {
     global $errors;
     
-    $outputDir = dirname($inputFile);
-    $outputFile = $outputDir . '/' . pathinfo($inputFile, PATHINFO_FILENAME) . '.pdf';
+    // Try different conversion methods
+    $converted = false;
     
-    // Check if LibreOffice/soffice is available
-    $sofficeCommand = '';
-    $possibleCommands = [
+    // Method 1: LibreOffice/soffice
+    $sofficeCommands = [
         'soffice',
         '/usr/bin/soffice',
         '/usr/local/bin/soffice',
-        '/Applications/LibreOffice.app/Contents/MacOS/soffice',
-        'libreoffice'
+        'libreoffice',
+        '/usr/bin/libreoffice'
     ];
     
-    foreach ($possibleCommands as $cmd) {
-        exec("which $cmd 2>/dev/null", $output, $returnVar);
+    foreach ($sofficeCommands as $cmd) {
+        $checkCommand = "which $cmd 2>/dev/null";
+        exec($checkCommand, $output, $returnVar);
+        
         if ($returnVar === 0) {
-            $sofficeCommand = $cmd;
-            break;
+            $outputDir = dirname($outputFile);
+            $command = "$cmd --headless --convert-to pdf --outdir " . 
+                      escapeshellarg($outputDir) . " " . 
+                      escapeshellarg($inputFile) . " 2>&1";
+            
+            exec($command, $output, $returnVar);
+            
+            // LibreOffice creates file with original name + .pdf
+            $expectedOutput = $outputDir . '/' . pathinfo(basename($inputFile), PATHINFO_FILENAME) . '.pdf';
+            
+            if ($returnVar === 0 && file_exists($expectedOutput)) {
+                if ($expectedOutput !== $outputFile) {
+                    rename($expectedOutput, $outputFile);
+                }
+                $converted = true;
+                break;
+            }
         }
     }
     
-    if (empty($sofficeCommand)) {
-        // Try using unoconv as fallback
+    // Method 2: unoconv
+    if (!$converted) {
         exec("which unoconv 2>/dev/null", $output, $returnVar);
         if ($returnVar === 0) {
-            $command = "unoconv -f pdf -o " . escapeshellarg($outputFile) . " " . escapeshellarg($inputFile) . " 2>&1";
+            $command = "unoconv -f pdf -o " . escapeshellarg($outputFile) . " " . 
+                      escapeshellarg($inputFile) . " 2>&1";
             exec($command, $output, $returnVar);
             
             if ($returnVar === 0 && file_exists($outputFile)) {
-                return $outputFile;
+                $converted = true;
             }
         }
-        
-        $errors[] = "LibreOffice or unoconv is not installed. Please install LibreOffice to use this feature.";
-        return false;
     }
     
-    // Convert using LibreOffice
-    $command = $sofficeCommand . " --headless --convert-to pdf --outdir " . 
-               escapeshellarg($outputDir) . " " . escapeshellarg($inputFile) . " 2>&1";
-    
-    exec($command, $output, $returnVar);
-    
-    if ($returnVar === 0 && file_exists($outputFile)) {
-        return $outputFile;
-    } else {
-        $errors[] = "Failed to convert document to PDF. Error: " . implode("\n", $output);
-        return false;
+    // Method 3: For text files, create PDF using PHP
+    if (!$converted && in_array(strtolower(pathinfo($inputFile, PATHINFO_EXTENSION)), ['txt', 'text'])) {
+        // Simple text to PDF conversion
+        $content = file_get_contents($inputFile);
+        if ($content !== false) {
+            // Create a simple PDF using Ghostscript
+            $psFile = tempnam(TEMP_DIR, 'text_') . '.ps';
+            
+            // Create PostScript file
+            $ps = "%!PS\n";
+            $ps .= "/Courier findfont 10 scalefont setfont\n";
+            $ps .= "50 750 moveto\n";
+            
+            $lines = explode("\n", $content);
+            $y = 750;
+            foreach ($lines as $line) {
+                if ($y < 50) {
+                    $ps .= "showpage\n";
+                    $ps .= "50 750 moveto\n";
+                    $y = 750;
+                }
+                $ps .= "(" . addslashes(substr($line, 0, 80)) . ") show\n";
+                $ps .= "50 " . ($y -= 12) . " moveto\n";
+            }
+            $ps .= "showpage\n";
+            
+            file_put_contents($psFile, $ps);
+            
+            // Convert PS to PDF
+            $gsPath = defined('GS_PATH') ? GS_PATH : '/usr/bin/gs';
+            $command = $gsPath . " -dNOPAUSE -dBATCH -sDEVICE=pdfwrite -sOutputFile=" . 
+                      escapeshellarg($outputFile) . " " . escapeshellarg($psFile) . " 2>&1";
+            
+            exec($command, $output, $returnVar);
+            
+            @unlink($psFile);
+            
+            if ($returnVar === 0 && file_exists($outputFile)) {
+                $converted = true;
+            }
+        }
     }
+    
+    return $converted;
 }
 
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Verify CSRF token
-    if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
-        $errors[] = 'Invalid security token. Please try again.';
-    } else {
-        if (!empty($_FILES['doc_files']['tmp_name'][0])) {
-            $uploadedFiles = $_FILES['doc_files'];
-            $convertedFiles = [];
-            
-            for ($i = 0; $i < count($uploadedFiles['tmp_name']); $i++) {
-                if ($uploadedFiles['error'][$i] !== UPLOAD_ERR_OK) {
-                    $errors[] = 'File upload failed for ' . $uploadedFiles['name'][$i];
-                    continue;
-                }
-                
-                if ($uploadedFiles['size'][$i] > MAX_FILE_SIZE) {
-                    $errors[] = 'File ' . $uploadedFiles['name'][$i] . ' exceeds the maximum size limit.';
-                    continue;
-                }
-                
-                // Check file type
-                $finfo = finfo_open(FILEINFO_MIME_TYPE);
-                $mimeType = finfo_file($finfo, $uploadedFiles['tmp_name'][$i]);
-                finfo_close($finfo);
-                
-                $allowedMimes = [
-                    'application/msword', // .doc
-                    'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx
-                    'application/vnd.oasis.opendocument.text', // .odt
-                    'application/rtf', // .rtf
-                    'text/plain' // .txt
-                ];
-                
-                $extension = strtolower(pathinfo($uploadedFiles['name'][$i], PATHINFO_EXTENSION));
-                $allowedExtensions = ['doc', 'docx', 'odt', 'rtf', 'txt'];
-                
-                if (!in_array($mimeType, $allowedMimes) && !in_array($extension, $allowedExtensions)) {
-                    $errors[] = 'File ' . $uploadedFiles['name'][$i] . ' is not a supported document format.';
-                    continue;
-                }
-                
-                // Save uploaded file
-                $tempFile = UPLOAD_DIR . uniqid('doc_') . '.' . $extension;
-                if (move_uploaded_file($uploadedFiles['tmp_name'][$i], $tempFile)) {
-                    // Convert to PDF
-                    $pdfFile = convertDocToPDF($tempFile);
-                    
-                    if ($pdfFile !== false) {
-                        $convertedFiles[] = [
-                            'original' => $uploadedFiles['name'][$i],
-                            'pdf' => $pdfFile
-                        ];
-                        $_SESSION['temp_files'][] = $pdfFile;
-                    }
-                    
-                    // Clean up temp file
-                    @unlink($tempFile);
-                }
-            }
-            
-            if (!empty($convertedFiles)) {
-                if (count($convertedFiles) === 1) {
-                    // Single file - provide direct download
-                    $uploadSuccess = true;
-                    $processedFile = $convertedFiles[0]['pdf'];
-                } else {
-                    // Multiple files - create ZIP
-                    $zipFile = UPLOAD_DIR . 'converted_pdfs_' . uniqid() . '.zip';
-                    $zip = new ZipArchive();
-                    
-                    if ($zip->open($zipFile, ZipArchive::CREATE) === TRUE) {
-                        foreach ($convertedFiles as $file) {
-                            $pdfName = pathinfo($file['original'], PATHINFO_FILENAME) . '.pdf';
-                            $zip->addFile($file['pdf'], $pdfName);
-                        }
-                        $zip->close();
-                        
-                        $uploadSuccess = true;
-                        $processedFile = $zipFile;
-                        $_SESSION['temp_files'][] = $zipFile;
-                    }
-                }
-            }
-            
-            if (empty($convertedFiles) && empty($errors)) {
-                $errors[] = 'No files were successfully converted.';
-            }
-        } else {
-            $errors[] = 'Please select at least one document file to convert.';
+    try {
+        // Verify CSRF token
+        verifyCSRFToken($_POST['csrf_token'] ?? '');
+        
+        if (!isset($_FILES['doc_files']) || empty($_FILES['doc_files']['tmp_name'][0])) {
+            throw new RuntimeException('No files uploaded.');
         }
+        
+        $uploadedFiles = $_FILES['doc_files'];
+        $convertedFiles = [];
+        
+        // Process each uploaded file
+        for ($i = 0; $i < count($uploadedFiles['tmp_name']); $i++) {
+            if ($uploadedFiles['error'][$i] !== UPLOAD_ERR_OK) {
+                continue;
+            }
+            
+            // Validate file size
+            if ($uploadedFiles['size'][$i] > MAX_FILE_SIZE) {
+                $errors[] = 'File ' . $uploadedFiles['name'][$i] . ' exceeds size limit.';
+                continue;
+            }
+            
+            // Validate file type
+            $extension = strtolower(pathinfo($uploadedFiles['name'][$i], PATHINFO_EXTENSION));
+            $allowedExtensions = ['doc', 'docx', 'odt', 'rtf', 'txt'];
+            
+            if (!in_array($extension, $allowedExtensions)) {
+                $errors[] = 'File ' . $uploadedFiles['name'][$i] . ' is not a supported format.';
+                continue;
+            }
+            
+            // Save uploaded file
+            $tempFile = UPLOAD_DIR . uniqid('doc_') . '.' . $extension;
+            if (!move_uploaded_file($uploadedFiles['tmp_name'][$i], $tempFile)) {
+                continue;
+            }
+            
+            $_SESSION['temp_files'][] = $tempFile;
+            
+            // Convert to PDF
+            $outputFile = UPLOAD_DIR . uniqid('converted_') . '.pdf';
+            
+            if (convertDocToPDF($tempFile, $outputFile)) {
+                $convertedFiles[] = [
+                    'original' => $uploadedFiles['name'][$i],
+                    'pdf' => $outputFile
+                ];
+                $_SESSION['temp_files'][] = $outputFile;
+            } else {
+                $errors[] = 'Failed to convert ' . $uploadedFiles['name'][$i] . '. LibreOffice may not be installed.';
+            }
+        }
+        
+        // Handle converted files
+        if (!empty($convertedFiles)) {
+            if (count($convertedFiles) === 1) {
+                // Single file
+                $downloadLink = 'download.php?file=' . urlencode(basename($convertedFiles[0]['pdf']));
+                $success = true;
+            } else {
+                // Multiple files - create ZIP
+                $zipFile = UPLOAD_DIR . uniqid('doc_pdfs_') . '.zip';
+                $zip = new ZipArchive();
+                
+                if ($zip->open($zipFile, ZipArchive::CREATE) === TRUE) {
+                    foreach ($convertedFiles as $file) {
+                        $pdfName = pathinfo($file['original'], PATHINFO_FILENAME) . '.pdf';
+                        $zip->addFile($file['pdf'], $pdfName);
+                    }
+                    $zip->close();
+                    
+                    $_SESSION['temp_files'][] = $zipFile;
+                    $downloadLink = 'download.php?file=' . urlencode(basename($zipFile));
+                    $success = true;
+                }
+            }
+        }
+        
+        if (!$success && empty($errors)) {
+            throw new RuntimeException('No files were successfully converted. Please ensure LibreOffice is installed on the server.');
+        }
+        
+    } catch (Exception $e) {
+        $errors[] = $e->getMessage();
+        logError('DOC to PDF Error', ['error' => $e->getMessage()]);
     }
 }
 
-// Generate CSRF token
-$_SESSION['csrf_token'] = bin2hex(random_bytes(32));
-?>
-
-<div class="container">
-    <div class="tool-header">
-        <h1><i class="fas fa-file-word"></i> DOC to PDF</h1>
-        <p>Convert Word documents and other text files to PDF</p>
-    </div>
-
-    <?php if (!empty($errors)): ?>
-        <div class="alert alert-error">
-            <i class="fas fa-exclamation-circle"></i>
-            <ul>
-                <?php foreach ($errors as $error): ?>
-                    <li><?php echo htmlspecialchars($error); ?></li>
-                <?php endforeach; ?>
-            </ul>
-        </div>
-    <?php endif; ?>
-
-    <?php if ($uploadSuccess && $processedFile): ?>
-        <div class="alert alert-success">
-            <i class="fas fa-check-circle"></i>
-            Document(s) converted to PDF successfully!
-        </div>
-        
-        <div class="result-section">
-            <h3>Download Converted PDF</h3>
-            <div class="download-section">
-                <a href="download.php?file=<?php echo urlencode(basename($processedFile)); ?>" 
-                   class="btn btn-primary btn-lg">
-                    <i class="fas fa-download"></i> Download <?php echo (strpos($processedFile, '.zip') !== false) ? 'ZIP File' : 'PDF'; ?>
-                </a>
-            </div>
-            <div class="action-buttons">
-                <a href="doc-to-pdf.php" class="btn btn-secondary">
-                    <i class="fas fa-redo"></i> Convert More Documents
-                </a>
-                <a href="../index.php" class="btn btn-outline">
-                    <i class="fas fa-home"></i> Back to Home
-                </a>
-            </div>
-        </div>
-    <?php else: ?>
-        <form method="POST" enctype="multipart/form-data" class="upload-form" id="docForm">
-            <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
-            
-            <div class="upload-area" id="uploadArea">
-                <input type="file" name="doc_files[]" id="docFiles" 
-                       accept=".doc,.docx,.odt,.rtf,.txt" multiple required>
-                <label for="docFiles">
-                    <i class="fas fa-cloud-upload-alt"></i>
-                    <span>Click to upload or drag and drop</span>
-                    <small>DOC, DOCX, ODT, RTF, TXT files (Max <?php echo MAX_FILE_SIZE / 1048576; ?>MB each)</small>
-                </label>
-                <div class="file-list" id="fileList"></div>
-            </div>
-
-            <button type="submit" class="btn btn-primary btn-lg" id="convertButton">
-                <i class="fas fa-file-pdf"></i> Convert to PDF
-            </button>
-        </form>
-
-        <div class="info-section">
-            <h3>Supported Formats:</h3>
-            <ul>
-                <li><strong>DOC/DOCX:</strong> Microsoft Word documents</li>
-                <li><strong>ODT:</strong> OpenDocument Text files</li>
-                <li><strong>RTF:</strong> Rich Text Format files</li>
-                <li><strong>TXT:</strong> Plain text files</li>
-            </ul>
-            
-            <h3>Features:</h3>
-            <ul>
-                <li>Preserves document formatting and layout</li>
-                <li>Supports multiple file conversion</li>
-                <li>Maintains images and tables</li>
-                <li>Fast and secure conversion</li>
-            </ul>
-            
-            <div class="alert alert-info" style="margin-top: 20px;">
-                <i class="fas fa-info-circle"></i>
-                <strong>Note:</strong> This feature requires LibreOffice to be installed on the server.
-                If conversions fail, please contact the administrator.
-            </div>
-        </div>
-    <?php endif; ?>
-</div>
-
+// Additional scripts for this page
+$additional_scripts = <<<HTML
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const fileInput = document.getElementById('docFiles');
     const uploadArea = document.getElementById('uploadArea');
+    const fileInput = document.getElementById('docFiles');
+    const fileInfo = document.getElementById('fileInfo');
     const fileList = document.getElementById('fileList');
+    const convertBtn = document.getElementById('convertBtn');
     const docForm = document.getElementById('docForm');
-    const convertButton = document.getElementById('convertButton');
-
-    // File input change
-    fileInput.addEventListener('change', function(e) {
-        handleFileSelect(e.target.files);
-    });
-
-    // Drag and drop
-    uploadArea.addEventListener('dragover', function(e) {
+    const loader = document.getElementById('loader');
+    
+    // Drag and drop functionality
+    uploadArea.addEventListener('click', () => fileInput.click());
+    
+    uploadArea.addEventListener('dragover', (e) => {
         e.preventDefault();
-        e.stopPropagation();
-        uploadArea.classList.add('drag-over');
+        uploadArea.classList.add('dragover');
     });
-
-    uploadArea.addEventListener('dragleave', function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        uploadArea.classList.remove('drag-over');
+    
+    uploadArea.addEventListener('dragleave', () => {
+        uploadArea.classList.remove('dragover');
     });
-
-    uploadArea.addEventListener('drop', function(e) {
+    
+    uploadArea.addEventListener('drop', (e) => {
         e.preventDefault();
-        e.stopPropagation();
-        uploadArea.classList.remove('drag-over');
+        uploadArea.classList.remove('dragover');
         
         const files = e.dataTransfer.files;
         if (files.length > 0) {
             fileInput.files = files;
-            handleFileSelect(files);
+            handleFileSelect();
         }
     });
-
-    function handleFileSelect(files) {
-        fileList.innerHTML = '';
-        
+    
+    fileInput.addEventListener('change', handleFileSelect);
+    
+    function handleFileSelect() {
+        const files = fileInput.files;
         if (files.length > 0) {
-            uploadArea.classList.add('has-file');
+            fileList.innerHTML = '';
+            fileInfo.style.display = 'block';
+            uploadArea.style.display = 'none';
+            convertBtn.disabled = false;
             
             for (let i = 0; i < files.length; i++) {
-                const file = files[i];
                 const fileItem = document.createElement('div');
                 fileItem.className = 'file-item';
                 fileItem.innerHTML = `
-                    <i class="fas fa-file-word"></i>
-                    <span>${file.name}</span>
-                    <small>(${formatFileSize(file.size)})</small>
+                    <div class="file-info">
+                        <i class="fas fa-file-word file-icon"></i>
+                        <div>
+                            <div class="file-name">${files[i].name}</div>
+                            <div class="file-size">${formatFileSize(files[i].size)}</div>
+                        </div>
+                    </div>
                 `;
                 fileList.appendChild(fileItem);
             }
-        } else {
-            uploadArea.classList.remove('has-file');
+            
+            // Add remove button
+            const removeBtn = document.createElement('button');
+            removeBtn.type = 'button';
+            removeBtn.className = 'btn btn-secondary';
+            removeBtn.style.marginTop = '1rem';
+            removeBtn.innerHTML = '<i class="fas fa-times"></i> Clear Files';
+            removeBtn.onclick = clearFiles;
+            fileInfo.appendChild(removeBtn);
         }
     }
-
+    
+    function clearFiles() {
+        fileInput.value = '';
+        fileInfo.style.display = 'none';
+        uploadArea.style.display = 'block';
+        convertBtn.disabled = true;
+    }
+    
     function formatFileSize(bytes) {
-        if (bytes === 0) return '0 Bytes';
-        const k = 1024;
-        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-        const i = Math.floor(Math.log(bytes) / Math.log(k));
-        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-    }
-
-    // Form submission
-    docForm.addEventListener('submit', function(e) {
-        if (!fileInput.files || fileInput.files.length === 0) {
-            e.preventDefault();
-            alert('Please select at least one document file');
-            return;
+        const units = ['B', 'KB', 'MB', 'GB'];
+        let i = 0;
+        while (bytes >= 1024 && i < units.length - 1) {
+            bytes /= 1024;
+            i++;
         }
-
-        convertButton.disabled = true;
-        convertButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Converting to PDF...';
+        return bytes.toFixed(2) + ' ' + units[i];
+    }
+    
+    docForm.addEventListener('submit', (e) => {
+        convertBtn.disabled = true;
+        loader.style.display = 'block';
     });
 });
 </script>
+HTML;
+?>
 
-<style>
-.file-list {
-    margin-top: 15px;
-}
+<div class="tool-page">
+    <div class="container">
+        <div class="tool-header">
+            <h1><i class="fas fa-file-word"></i> DOC to PDF</h1>
+            <p>Convert Word documents and other text files to PDF</p>
+        </div>
 
-.file-item {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px;
-    background: var(--gray-50);
-    border-radius: var(--radius-md);
-    margin-bottom: 8px;
-}
+        <div class="tool-content">
+            <?php if (!empty($errors)): ?>
+                <div class="alert alert-error">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <?php foreach ($errors as $error): ?>
+                        <div><?php echo htmlspecialchars($error); ?></div>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
 
-.file-item i {
-    color: #2b5797;
-    font-size: 1.2rem;
-}
+            <?php if ($success): ?>
+                <div class="alert alert-success">
+                    <i class="fas fa-check-circle"></i>
+                    Your documents have been converted successfully!
+                </div>
+                
+                <div style="text-align: center; margin: 2rem 0;">
+                    <a href="<?php echo htmlspecialchars($downloadLink); ?>" class="btn btn-primary">
+                        <i class="fas fa-download"></i> Download PDF<?php echo (strpos($downloadLink, '.zip') !== false) ? 's' : ''; ?>
+                    </a>
+                </div>
+                
+                <div style="text-align: center;">
+                    <a href="doc-to-pdf.php" class="btn btn-secondary">Convert More Documents</a>
+                </div>
+            <?php else: ?>
+                <form method="POST" enctype="multipart/form-data" id="docForm">
+                    <input type="hidden" name="csrf_token" value="<?php echo $csrfToken; ?>">
+                    
+                    <div class="upload-area" id="uploadArea">
+                        <i class="fas fa-cloud-upload-alt upload-icon"></i>
+                        <div class="upload-text">Drag & Drop your documents here</div>
+                        <div class="upload-subtext">or click to browse</div>
+                        <input type="file" name="doc_files[]" id="docFiles" class="file-input" 
+                               accept=".doc,.docx,.odt,.rtf,.txt" multiple required>
+                    </div>
 
-.file-item span {
-    flex: 1;
-    font-weight: 500;
-}
+                    <div id="fileInfo" style="display: none;">
+                        <div class="file-list" id="fileList"></div>
+                    </div>
 
-.file-item small {
-    color: var(--gray-600);
-}
-</style>
+                    <div style="text-align: center; margin-top: 2rem;">
+                        <button type="submit" class="btn btn-primary" id="convertBtn" disabled>
+                            <i class="fas fa-file-pdf"></i> Convert to PDF
+                        </button>
+                    </div>
 
-<?php require_once '../includes/footer.php'; ?>
+                    <div class="loader" id="loader"></div>
+                </form>
+
+                <div style="margin-top: 3rem; padding-top: 2rem; border-top: 1px solid #e0e0e0;">
+                    <h3>Supported Formats:</h3>
+                    <ul style="line-height: 2;">
+                        <li><strong>DOC/DOCX:</strong> Microsoft Word documents</li>
+                        <li><strong>ODT:</strong> OpenDocument Text files</li>
+                        <li><strong>RTF:</strong> Rich Text Format files</li>
+                        <li><strong>TXT:</strong> Plain text files</li>
+                    </ul>
+                    
+                    <h3 style="margin-top: 2rem;">Features:</h3>
+                    <ul style="line-height: 2;">
+                        <li>Batch conversion - convert multiple files at once</li>
+                        <li>Preserves document formatting (when possible)</li>
+                        <li>Fast and secure processing</li>
+                        <li>Automatic cleanup after download</li>
+                    </ul>
+                    
+                    <div class="alert alert-info" style="margin-top: 2rem;">
+                        <i class="fas fa-info-circle"></i>
+                        <strong>Note:</strong> This feature requires LibreOffice to be installed on the server. 
+                        If conversions fail, please try again later or contact support.
+                    </div>
+                </div>
+            <?php endif; ?>
+        </div>
+    </div>
+</div>
+
+<?php
+require_once '../includes/footer.php';
+?>

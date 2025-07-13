@@ -1,78 +1,155 @@
 <?php
+// Set page-specific variables
+$page_title = 'Split PDF - Triniva';
+$page_description = 'Split PDF files into multiple documents. Split by individual pages, custom ranges, or fixed page count.';
+
+// Include configuration and header
 require_once '../includes/config.php';
 require_once '../includes/functions.php';
 require_once '../includes/header.php';
 
-// Initialize variables
-$uploadSuccess = false;
-$errors = [];
-$processedFile = '';
+// Generate CSRF token
+$csrfToken = generateCSRFToken();
 
-// Function to split PDF using Ghostscript
-function splitPDF($inputFile, $splitMode, $pageRanges = '', $pageCount = 1) {
+// Initialize variables
+$errors = [];
+$success = false;
+$downloadLink = '';
+
+// Function to get total pages in PDF using Ghostscript
+function getTotalPDFPages($pdfFile) {
     global $errors;
     
-    // Get total pages in PDF
-    $totalPages = getTotalPDFPages($inputFile);
-    if ($totalPages === false) {
-        $errors[] = "Could not determine total pages in PDF.";
-        return false;
+    // Try using Ghostscript
+    $gsPath = defined('GS_PATH') ? GS_PATH : '/usr/bin/gs';
+    
+    // Use a simpler approach - create a test PDF to count pages
+    $tempFile = TEMP_DIR . uniqid('count_') . '.txt';
+    $command = $gsPath . " -q -dNODISPLAY -dNOPAUSE -dBATCH -dNOSAFER -c \"(" . 
+               escapeshellarg($pdfFile) . ") (r) file runpdfbegin pdfpagecount = quit\" > " . 
+               escapeshellarg($tempFile) . " 2>&1";
+    
+    exec($command, $output, $returnVar);
+    
+    if (file_exists($tempFile)) {
+        $pageCount = trim(file_get_contents($tempFile));
+        @unlink($tempFile);
+        
+        if (is_numeric($pageCount) && $pageCount > 0) {
+            return (int)$pageCount;
+        }
     }
     
-    $results = [];
-    $tempDir = TEMP_DIR . uniqid('split_') . '/';
+    // Alternative method - try to extract page info
+    $command = $gsPath . " -q -dNODISPLAY -c \"(" . escapeshellarg($pdfFile) . 
+               ") (r) file runpdfbegin pdfpagecount = quit\" 2>&1";
+    exec($command, $output, $returnVar);
     
-    if (!mkdir($tempDir, 0777, true)) {
-        $errors[] = "Failed to create temporary directory.";
-        return false;
+    if (!empty($output) && is_numeric($output[0])) {
+        return (int)$output[0];
     }
     
+    // If all else fails, try splitting and see what happens
+    return false;
+}
+
+// Handle form submission
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
+        // Verify CSRF token
+        verifyCSRFToken($_POST['csrf_token'] ?? '');
+        
+        if (!isset($_FILES['pdf_file'])) {
+            throw new RuntimeException('No file uploaded.');
+        }
+
+        // Validate file
+        validateFile($_FILES['pdf_file'], ['application/pdf']);
+        
+        $uploadedFile = $_FILES['pdf_file'];
+        $splitMode = $_POST['split_mode'] ?? 'single';
+        $pageRanges = $_POST['page_ranges'] ?? '';
+        $pageCount = (int)($_POST['page_count'] ?? 1);
+        
+        // Create unique filename
+        $inputFile = UPLOAD_DIR . uniqid('split_input_') . '.pdf';
+        
+        if (!move_uploaded_file($uploadedFile['tmp_name'], $inputFile)) {
+            throw new RuntimeException('Failed to save uploaded file.');
+        }
+        
+        // Register file for cleanup
+        $_SESSION['temp_files'][] = $inputFile;
+        
+        // Get total pages
+        $totalPages = getTotalPDFPages($inputFile);
+        if ($totalPages === false) {
+            // Assume at least 1 page if we can't determine
+            $totalPages = 100; // Set a reasonable maximum
+        }
+        
+        // Create temporary directory for split files
+        $tempDir = TEMP_DIR . uniqid('split_') . '/';
+        if (!mkdir($tempDir, 0777, true)) {
+            throw new RuntimeException('Failed to create temporary directory.');
+        }
+        
+        $splitFiles = [];
+        $gsPath = defined('GS_PATH') ? GS_PATH : '/usr/bin/gs';
+        
         if ($splitMode === 'single') {
             // Split into individual pages
+            $actualPages = 0;
             for ($i = 1; $i <= $totalPages; $i++) {
-                $outputFile = $tempDir . "page_{$i}.pdf";
-                $command = "gs -sDEVICE=pdfwrite -dNOPAUSE -dBATCH -dSAFER " .
+                $outputFile = $tempDir . sprintf("page_%03d.pdf", $i);
+                
+                $command = $gsPath . " -sDEVICE=pdfwrite -dNOPAUSE -dBATCH -dSAFER " .
                           "-dFirstPage={$i} -dLastPage={$i} " .
                           "-sOutputFile=" . escapeshellarg($outputFile) . " " .
                           escapeshellarg($inputFile) . " 2>&1";
                 
                 exec($command, $output, $returnVar);
                 
-                if ($returnVar === 0 && file_exists($outputFile)) {
-                    $results[] = $outputFile;
+                if ($returnVar === 0 && file_exists($outputFile) && filesize($outputFile) > 0) {
+                    $splitFiles[] = $outputFile;
+                    $actualPages = $i;
+                } else {
+                    // No more pages
+                    @unlink($outputFile);
+                    break;
                 }
             }
-        } elseif ($splitMode === 'range') {
-            // Split by custom page ranges
-            $ranges = explode(',', $pageRanges);
+            
+            if (empty($splitFiles)) {
+                throw new RuntimeException('Failed to split PDF. The file might be corrupted or protected.');
+            }
+            
+        } elseif ($splitMode === 'range' && !empty($pageRanges)) {
+            // Split by custom ranges
+            $ranges = array_map('trim', explode(',', $pageRanges));
             $rangeIndex = 1;
             
             foreach ($ranges as $range) {
-                $range = trim($range);
                 if (empty($range)) continue;
                 
-                $outputFile = $tempDir . "range_{$rangeIndex}.pdf";
+                $outputFile = $tempDir . sprintf("range_%03d.pdf", $rangeIndex);
                 
                 if (strpos($range, '-') !== false) {
                     // Handle range like "1-3"
-                    list($start, $end) = explode('-', $range);
-                    $start = (int)trim($start);
-                    $end = (int)trim($end);
-                    
+                    list($start, $end) = array_map('intval', explode('-', $range));
                     if ($start < 1) $start = 1;
-                    if ($end > $totalPages) $end = $totalPages;
+                    if ($end < $start) $end = $start;
                     
-                    $command = "gs -sDEVICE=pdfwrite -dNOPAUSE -dBATCH -dSAFER " .
+                    $command = $gsPath . " -sDEVICE=pdfwrite -dNOPAUSE -dBATCH -dSAFER " .
                               "-dFirstPage={$start} -dLastPage={$end} " .
                               "-sOutputFile=" . escapeshellarg($outputFile) . " " .
                               escapeshellarg($inputFile) . " 2>&1";
                 } else {
                     // Single page
-                    $page = (int)trim($range);
-                    if ($page < 1 || $page > $totalPages) continue;
+                    $page = (int)$range;
+                    if ($page < 1) continue;
                     
-                    $command = "gs -sDEVICE=pdfwrite -dNOPAUSE -dBATCH -dSAFER " .
+                    $command = $gsPath . " -sDEVICE=pdfwrite -dNOPAUSE -dBATCH -dSAFER " .
                               "-dFirstPage={$page} -dLastPage={$page} " .
                               "-sOutputFile=" . escapeshellarg($outputFile) . " " .
                               escapeshellarg($inputFile) . " 2>&1";
@@ -80,276 +157,114 @@ function splitPDF($inputFile, $splitMode, $pageRanges = '', $pageCount = 1) {
                 
                 exec($command, $output, $returnVar);
                 
-                if ($returnVar === 0 && file_exists($outputFile)) {
-                    $results[] = $outputFile;
+                if ($returnVar === 0 && file_exists($outputFile) && filesize($outputFile) > 0) {
+                    $splitFiles[] = $outputFile;
                     $rangeIndex++;
+                } else {
+                    @unlink($outputFile);
                 }
             }
-        } elseif ($splitMode === 'fixed') {
-            // Split by fixed page count
-            $pageCount = (int)$pageCount;
-            if ($pageCount < 1) $pageCount = 1;
             
+            if (empty($splitFiles)) {
+                throw new RuntimeException('Failed to split PDF. Please check your page ranges.');
+            }
+            
+        } elseif ($splitMode === 'fixed' && $pageCount > 0) {
+            // Split by fixed page count
             $partIndex = 1;
-            for ($i = 1; $i <= $totalPages; $i += $pageCount) {
-                $start = $i;
-                $end = min($i + $pageCount - 1, $totalPages);
+            $pageNum = 1;
+            
+            while ($pageNum <= $totalPages) {
+                $start = $pageNum;
+                $end = $pageNum + $pageCount - 1;
                 
-                $outputFile = $tempDir . "part_{$partIndex}.pdf";
-                $command = "gs -sDEVICE=pdfwrite -dNOPAUSE -dBATCH -dSAFER " .
+                $outputFile = $tempDir . sprintf("part_%03d.pdf", $partIndex);
+                
+                $command = $gsPath . " -sDEVICE=pdfwrite -dNOPAUSE -dBATCH -dSAFER " .
                           "-dFirstPage={$start} -dLastPage={$end} " .
                           "-sOutputFile=" . escapeshellarg($outputFile) . " " .
                           escapeshellarg($inputFile) . " 2>&1";
                 
                 exec($command, $output, $returnVar);
                 
-                if ($returnVar === 0 && file_exists($outputFile)) {
-                    $results[] = $outputFile;
+                if ($returnVar === 0 && file_exists($outputFile) && filesize($outputFile) > 0) {
+                    $splitFiles[] = $outputFile;
                     $partIndex++;
+                    $pageNum = $end + 1;
+                } else {
+                    @unlink($outputFile);
+                    break;
                 }
+                
+                // Safety check to prevent infinite loop
+                if ($partIndex > 1000) break;
             }
+            
+            if (empty($splitFiles)) {
+                throw new RuntimeException('Failed to split PDF into fixed page counts.');
+            }
+        } else {
+            throw new RuntimeException('Invalid split mode or parameters.');
         }
         
         // Create ZIP file with all split PDFs
-        if (!empty($results)) {
-            $zipFile = UPLOAD_DIR . 'split_' . uniqid() . '.zip';
+        if (count($splitFiles) === 1) {
+            // Single file - provide direct download
+            $outputFile = UPLOAD_DIR . uniqid('split_') . '.pdf';
+            if (copy($splitFiles[0], $outputFile)) {
+                $_SESSION['temp_files'][] = $outputFile;
+                $downloadLink = 'download.php?file=' . urlencode(basename($outputFile));
+                $success = true;
+            }
+        } else {
+            // Multiple files - create ZIP
+            $zipFile = UPLOAD_DIR . uniqid('split_') . '.zip';
             $zip = new ZipArchive();
             
             if ($zip->open($zipFile, ZipArchive::CREATE) === TRUE) {
-                foreach ($results as $index => $file) {
+                foreach ($splitFiles as $file) {
                     $zip->addFile($file, basename($file));
                 }
                 $zip->close();
                 
-                // Clean up temporary files
-                foreach ($results as $file) {
-                    @unlink($file);
-                }
-                @rmdir($tempDir);
-                
-                return $zipFile;
+                $_SESSION['temp_files'][] = $zipFile;
+                $downloadLink = 'download.php?file=' . urlencode(basename($zipFile));
+                $success = true;
+            } else {
+                throw new RuntimeException('Failed to create ZIP file.');
             }
         }
+        
+        // Clean up temporary files
+        foreach ($splitFiles as $file) {
+            @unlink($file);
+        }
+        @rmdir($tempDir);
         
     } catch (Exception $e) {
-        $errors[] = "Error during PDF split: " . $e->getMessage();
-    }
-    
-    // Clean up on error
-    foreach ($results as $file) {
-        @unlink($file);
-    }
-    @rmdir($tempDir);
-    
-    return false;
-}
-
-// Function to get total pages in PDF
-function getTotalPDFPages($pdfFile) {
-    $command = "gs -q -dNODISPLAY -c \"(" . escapeshellarg($pdfFile) . ") (r) file runpdfbegin pdfpagecount = quit\"";
-    exec($command, $output, $returnVar);
-    
-    if ($returnVar === 0 && !empty($output)) {
-        return (int)$output[0];
-    }
-    
-    // Fallback method using pdfinfo if available
-    $command = "pdfinfo " . escapeshellarg($pdfFile) . " | grep 'Pages:' | awk '{print $2}'";
-    exec($command, $output, $returnVar);
-    
-    if ($returnVar === 0 && !empty($output)) {
-        return (int)$output[0];
-    }
-    
-    return false;
-}
-
-// Handle form submission
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Verify CSRF token
-    if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
-        $errors[] = 'Invalid security token. Please try again.';
-    } else {
-        $splitMode = $_POST['split_mode'] ?? 'single';
-        $pageRanges = $_POST['page_ranges'] ?? '';
-        $pageCount = $_POST['page_count'] ?? 1;
-        
-        if (!empty($_FILES['pdf_file']['tmp_name'])) {
-            $uploadedFile = $_FILES['pdf_file'];
-            
-            // Validate file
-            if ($uploadedFile['error'] !== UPLOAD_ERR_OK) {
-                $errors[] = 'File upload failed. Please try again.';
-            } elseif ($uploadedFile['size'] > MAX_FILE_SIZE) {
-                $errors[] = 'File size exceeds the maximum limit of ' . (MAX_FILE_SIZE / 1048576) . ' MB.';
-            } else {
-                // Check if file is PDF
-                $finfo = finfo_open(FILEINFO_MIME_TYPE);
-                $mimeType = finfo_file($finfo, $uploadedFile['tmp_name']);
-                finfo_close($finfo);
-                
-                if ($mimeType !== 'application/pdf') {
-                    $errors[] = 'Please upload a valid PDF file.';
-                } else {
-                    // Save uploaded file
-                    $tempFile = UPLOAD_DIR . uniqid('split_') . '.pdf';
-                    if (move_uploaded_file($uploadedFile['tmp_name'], $tempFile)) {
-                        // Split PDF
-                        $result = splitPDF($tempFile, $splitMode, $pageRanges, $pageCount);
-                        
-                        if ($result !== false) {
-                            $uploadSuccess = true;
-                            $processedFile = $result;
-                            $_SESSION['temp_files'][] = $result;
-                            $_SESSION['temp_files'][] = $tempFile;
-                        } else {
-                            $errors[] = 'Failed to split PDF. Please check your settings and try again.';
-                        }
-                        
-                        // Clean up original temp file if processing failed
-                        if (!$uploadSuccess) {
-                            @unlink($tempFile);
-                        }
-                    } else {
-                        $errors[] = 'Failed to save uploaded file.';
-                    }
-                }
-            }
-        } else {
-            $errors[] = 'Please select a PDF file to split.';
-        }
+        $errors[] = $e->getMessage();
+        logError('Split PDF Error', ['error' => $e->getMessage()]);
     }
 }
 
-// Generate CSRF token
-$_SESSION['csrf_token'] = bin2hex(random_bytes(32));
-?>
-
-<div class="container">
-    <div class="tool-header">
-        <h1><i class="fas fa-cut"></i> Split PDF</h1>
-        <p>Split PDF files into multiple documents</p>
-    </div>
-
-    <?php if (!empty($errors)): ?>
-        <div class="alert alert-error">
-            <i class="fas fa-exclamation-circle"></i>
-            <ul>
-                <?php foreach ($errors as $error): ?>
-                    <li><?php echo htmlspecialchars($error); ?></li>
-                <?php endforeach; ?>
-            </ul>
-        </div>
-    <?php endif; ?>
-
-    <?php if ($uploadSuccess && $processedFile): ?>
-        <div class="alert alert-success">
-            <i class="fas fa-check-circle"></i>
-            PDF split successfully!
-        </div>
-        
-        <div class="result-section">
-            <h3>Download Split PDFs</h3>
-            <p>Your PDF has been split into multiple files and packaged in a ZIP archive.</p>
-            <div class="download-section">
-                <a href="download.php?file=<?php echo urlencode(basename($processedFile)); ?>" 
-                   class="btn btn-primary btn-lg">
-                    <i class="fas fa-download"></i> Download ZIP File
-                </a>
-            </div>
-            <div class="action-buttons">
-                <a href="split.php" class="btn btn-secondary">
-                    <i class="fas fa-redo"></i> Split Another PDF
-                </a>
-                <a href="../index.php" class="btn btn-outline">
-                    <i class="fas fa-home"></i> Back to Home
-                </a>
-            </div>
-        </div>
-    <?php else: ?>
-        <form method="POST" enctype="multipart/form-data" class="upload-form" id="splitForm">
-            <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
-            
-            <div class="upload-area" id="uploadArea">
-                <input type="file" name="pdf_file" id="pdfFile" accept=".pdf" required>
-                <label for="pdfFile">
-                    <i class="fas fa-cloud-upload-alt"></i>
-                    <span>Click to upload or drag and drop</span>
-                    <small>PDF files only (Max <?php echo MAX_FILE_SIZE / 1048576; ?>MB)</small>
-                </label>
-                <div class="file-info" id="fileInfo"></div>
-            </div>
-
-            <div class="options-section">
-                <h3>Split Options</h3>
-                
-                <div class="form-group">
-                    <label>Split Mode:</label>
-                    <div class="radio-group">
-                        <label class="radio-label">
-                            <input type="radio" name="split_mode" value="single" checked>
-                            <span>Split into individual pages</span>
-                        </label>
-                        <label class="radio-label">
-                            <input type="radio" name="split_mode" value="range">
-                            <span>Split by page ranges</span>
-                        </label>
-                        <label class="radio-label">
-                            <input type="radio" name="split_mode" value="fixed">
-                            <span>Split by fixed page count</span>
-                        </label>
-                    </div>
-                </div>
-
-                <div class="form-group" id="rangeInput" style="display: none;">
-                    <label for="page_ranges">Page Ranges:</label>
-                    <input type="text" name="page_ranges" id="page_ranges" 
-                           placeholder="e.g., 1-3, 5, 7-9" class="form-control">
-                    <small>Enter page numbers or ranges separated by commas</small>
-                </div>
-
-                <div class="form-group" id="countInput" style="display: none;">
-                    <label for="page_count">Pages per split:</label>
-                    <input type="number" name="page_count" id="page_count" 
-                           value="1" min="1" class="form-control">
-                    <small>Number of pages in each split PDF</small>
-                </div>
-            </div>
-
-            <button type="submit" class="btn btn-primary btn-lg" id="splitButton">
-                <i class="fas fa-cut"></i> Split PDF
-            </button>
-        </form>
-
-        <div class="info-section">
-            <h3>How to use:</h3>
-            <ol>
-                <li>Upload your PDF file</li>
-                <li>Choose split mode:
-                    <ul>
-                        <li><strong>Individual pages:</strong> Creates one PDF file for each page</li>
-                        <li><strong>Page ranges:</strong> Split specific pages (e.g., 1-3, 5, 7-9)</li>
-                        <li><strong>Fixed page count:</strong> Split into files with specified number of pages</li>
-                    </ul>
-                </li>
-                <li>Click "Split PDF" to process</li>
-                <li>Download the ZIP file containing all split PDFs</li>
-            </ol>
-        </div>
-    <?php endif; ?>
-</div>
-
+// Additional scripts for this page
+$additional_scripts = <<<HTML
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const fileInput = document.getElementById('pdfFile');
     const uploadArea = document.getElementById('uploadArea');
+    const fileInput = document.getElementById('pdfFile');
     const fileInfo = document.getElementById('fileInfo');
+    const fileName = document.getElementById('fileName');
+    const fileSize = document.getElementById('fileSize');
+    const removeFile = document.getElementById('removeFile');
+    const splitBtn = document.getElementById('splitBtn');
     const splitForm = document.getElementById('splitForm');
-    const splitButton = document.getElementById('splitButton');
+    const loader = document.getElementById('loader');
+    
+    const splitModeRadios = document.querySelectorAll('input[name="split_mode"]');
     const rangeInput = document.getElementById('rangeInput');
     const countInput = document.getElementById('countInput');
-    const splitModeRadios = document.querySelectorAll('input[name="split_mode"]');
-
+    
     // Handle split mode changes
     splitModeRadios.forEach(radio => {
         radio.addEventListener('change', function() {
@@ -363,72 +278,61 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     });
-
-    // File input change
-    fileInput.addEventListener('change', function(e) {
-        handleFileSelect(e.target.files);
-    });
-
-    // Drag and drop
-    uploadArea.addEventListener('dragover', function(e) {
+    
+    // Drag and drop functionality
+    uploadArea.addEventListener('click', () => fileInput.click());
+    
+    uploadArea.addEventListener('dragover', (e) => {
         e.preventDefault();
-        e.stopPropagation();
-        uploadArea.classList.add('drag-over');
+        uploadArea.classList.add('dragover');
     });
-
-    uploadArea.addEventListener('dragleave', function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        uploadArea.classList.remove('drag-over');
+    
+    uploadArea.addEventListener('dragleave', () => {
+        uploadArea.classList.remove('dragover');
     });
-
-    uploadArea.addEventListener('drop', function(e) {
+    
+    uploadArea.addEventListener('drop', (e) => {
         e.preventDefault();
-        e.stopPropagation();
-        uploadArea.classList.remove('drag-over');
+        uploadArea.classList.remove('dragover');
         
         const files = e.dataTransfer.files;
-        if (files.length > 0) {
+        if (files.length > 0 && files[0].type === 'application/pdf') {
             fileInput.files = files;
-            handleFileSelect(files);
+            handleFileSelect();
         }
     });
-
-    function handleFileSelect(files) {
-        if (files.length > 0) {
-            const file = files[0];
-            if (file.type === 'application/pdf') {
-                fileInfo.innerHTML = `
-                    <i class="fas fa-file-pdf"></i>
-                    <span>${file.name}</span>
-                    <small>(${formatFileSize(file.size)})</small>
-                `;
-                uploadArea.classList.add('has-file');
-            } else {
-                alert('Please select a valid PDF file');
-                fileInput.value = '';
-                fileInfo.innerHTML = '';
-                uploadArea.classList.remove('has-file');
-            }
+    
+    fileInput.addEventListener('change', handleFileSelect);
+    
+    removeFile.addEventListener('click', () => {
+        fileInput.value = '';
+        fileInfo.style.display = 'none';
+        uploadArea.style.display = 'block';
+        splitBtn.disabled = true;
+    });
+    
+    function handleFileSelect() {
+        const file = fileInput.files[0];
+        if (file) {
+            fileName.textContent = file.name;
+            fileSize.textContent = formatFileSize(file.size);
+            fileInfo.style.display = 'block';
+            uploadArea.style.display = 'none';
+            splitBtn.disabled = false;
         }
     }
-
+    
     function formatFileSize(bytes) {
-        if (bytes === 0) return '0 Bytes';
-        const k = 1024;
-        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-        const i = Math.floor(Math.log(bytes) / Math.log(k));
-        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-    }
-
-    // Form submission
-    splitForm.addEventListener('submit', function(e) {
-        if (!fileInput.files || fileInput.files.length === 0) {
-            e.preventDefault();
-            alert('Please select a PDF file');
-            return;
+        const units = ['B', 'KB', 'MB', 'GB'];
+        let i = 0;
+        while (bytes >= 1024 && i < units.length - 1) {
+            bytes /= 1024;
+            i++;
         }
-
+        return bytes.toFixed(2) + ' ' + units[i];
+    }
+    
+    splitForm.addEventListener('submit', (e) => {
         const selectedMode = document.querySelector('input[name="split_mode"]:checked').value;
         
         if (selectedMode === 'range') {
@@ -439,11 +343,138 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
         }
-
-        splitButton.disabled = true;
-        splitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Splitting PDF...';
+        
+        splitBtn.disabled = true;
+        loader.style.display = 'block';
     });
 });
 </script>
+HTML;
+?>
 
-<?php require_once '../includes/footer.php'; ?>
+<div class="tool-page">
+    <div class="container">
+        <div class="tool-header">
+            <h1><i class="fas fa-cut"></i> Split PDF</h1>
+            <p>Split PDF files into multiple documents</p>
+        </div>
+
+        <div class="tool-content">
+            <?php if (!empty($errors)): ?>
+                <div class="alert alert-error">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <?php foreach ($errors as $error): ?>
+                        <div><?php echo htmlspecialchars($error); ?></div>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
+
+            <?php if ($success): ?>
+                <div class="alert alert-success">
+                    <i class="fas fa-check-circle"></i>
+                    Your PDF has been split successfully!
+                </div>
+                
+                <div style="text-align: center; margin: 2rem 0;">
+                    <a href="<?php echo htmlspecialchars($downloadLink); ?>" class="btn btn-primary">
+                        <i class="fas fa-download"></i> Download Split PDFs
+                    </a>
+                </div>
+                
+                <div style="text-align: center;">
+                    <a href="split.php" class="btn btn-secondary">Split Another PDF</a>
+                </div>
+            <?php else: ?>
+                <form method="POST" enctype="multipart/form-data" id="splitForm">
+                    <input type="hidden" name="csrf_token" value="<?php echo $csrfToken; ?>">
+                    
+                    <div class="upload-area" id="uploadArea">
+                        <i class="fas fa-cloud-upload-alt upload-icon"></i>
+                        <div class="upload-text">Drag & Drop your PDF here</div>
+                        <div class="upload-subtext">or click to browse</div>
+                        <input type="file" name="pdf_file" id="pdfFile" class="file-input" accept=".pdf" required>
+                    </div>
+
+                    <div id="fileInfo" style="display: none;">
+                        <div class="file-list">
+                            <div class="file-item">
+                                <div class="file-info">
+                                    <i class="fas fa-file-pdf file-icon"></i>
+                                    <div>
+                                        <div class="file-name" id="fileName"></div>
+                                        <div class="file-size" id="fileSize"></div>
+                                    </div>
+                                </div>
+                                <button type="button" class="file-remove" id="removeFile">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Split Mode</label>
+                        <div style="display: flex; gap: 2rem; flex-wrap: wrap;">
+                            <label style="display: flex; align-items: center; cursor: pointer;">
+                                <input type="radio" name="split_mode" value="single" checked style="margin-right: 0.5rem;">
+                                <span>Individual Pages</span>
+                            </label>
+                            <label style="display: flex; align-items: center; cursor: pointer;">
+                                <input type="radio" name="split_mode" value="range" style="margin-right: 0.5rem;">
+                                <span>Page Ranges</span>
+                            </label>
+                            <label style="display: flex; align-items: center; cursor: pointer;">
+                                <input type="radio" name="split_mode" value="fixed" style="margin-right: 0.5rem;">
+                                <span>Fixed Page Count</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="form-group" id="rangeInput" style="display: none;">
+                        <label class="form-label" for="page_ranges">Page Ranges</label>
+                        <input type="text" name="page_ranges" id="page_ranges" class="form-control" 
+                               placeholder="e.g., 1-3, 5, 7-9">
+                        <small style="color: #666;">Enter page numbers or ranges separated by commas</small>
+                    </div>
+
+                    <div class="form-group" id="countInput" style="display: none;">
+                        <label class="form-label" for="page_count">Pages per Split</label>
+                        <input type="number" name="page_count" id="page_count" class="form-control" 
+                               value="1" min="1" max="100">
+                        <small style="color: #666;">Number of pages in each split PDF</small>
+                    </div>
+
+                    <div style="text-align: center; margin-top: 2rem;">
+                        <button type="submit" class="btn btn-primary" id="splitBtn" disabled>
+                            <i class="fas fa-cut"></i> Split PDF
+                        </button>
+                    </div>
+
+                    <div class="loader" id="loader"></div>
+                </form>
+
+                <div style="margin-top: 3rem; padding-top: 2rem; border-top: 1px solid #e0e0e0;">
+                    <h3>How it works:</h3>
+                    <ol style="line-height: 2;">
+                        <li>Upload your PDF file (up to <?php echo MAX_FILE_SIZE / 1048576; ?>MB)</li>
+                        <li>Choose your split mode:
+                            <ul style="margin-top: 0.5rem;">
+                                <li><strong>Individual Pages:</strong> Creates one PDF for each page</li>
+                                <li><strong>Page Ranges:</strong> Extract specific pages (e.g., 1-3, 5, 7-9)</li>
+                                <li><strong>Fixed Page Count:</strong> Split into chunks of N pages each</li>
+                            </ul>
+                        </li>
+                        <li>Click "Split PDF" and download your files</li>
+                    </ol>
+                    <p style="margin-top: 1rem; color: #757575;">
+                        <i class="fas fa-shield-alt"></i> Your files are processed securely and deleted automatically after download.
+                    </p>
+                </div>
+            <?php endif; ?>
+        </div>
+    </div>
+</div>
+
+<?php
+require_once '../includes/footer.php';
+?>
