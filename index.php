@@ -1,153 +1,161 @@
 <?php
-// Set page-specific variables
-$page_title = 'Free Online PDF Converter & Editor';
-$page_description = 'Free online PDF tools to compress, merge, rotate, convert JPG to PDF, PDF to JPG, unlock and protect PDFs. No registration required. Fast, secure and easy to use.';
-$page_keywords = 'PDF tools, PDF converter, PDF compressor, merge PDF, PDF editor, JPG to PDF, PDF to JPG, unlock PDF, protect PDF, free PDF tools';
+$page_title = 'Triniva - Free Online PDF Tools';
+$page_description = 'Free online PDF tools for everyone. Merge, split, compress, convert, rotate, unlock, and protect PDF files directly in your browser.';
+$page_keywords = 'PDF tools, merge PDF, split PDF, compress PDF, convert PDF, rotate PDF, unlock PDF, protect PDF, online PDF editor';
 
 // Include header
 require_once 'includes/header.php';
-
-// Simple test to ensure PHP is working
-if (isset($_GET['test'])) {
-    die("PHP is working! Path: " . __DIR__);
-}
 ?>
 
-    <section class="hero">
-        <div class="container">
-            <h1>Professional PDF Tools Suite</h1>
-            <p>All-in-one solution for your PDF needs. Fast, secure, and completely free.</p>
-        </div>
-    </section>
+    <style>
+        .maintenance-notice {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        .maintenance-notice h3 {
+            margin: 0 0 10px 0;
+            font-size: 1.5rem;
+        }
+        .tool-card {
+            opacity: 0.5;
+            cursor: not-allowed;
+            position: relative;
+        }
+        .tool-card::after {
+            content: 'Coming Soon';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .tool-card:hover {
+            transform: none;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+    </style>
 
-    <section id="tools" class="section">
+    <div class="hero">
         <div class="container">
-            <h2 class="text-center mb-8">Choose Your Tool</h2>
+            <h1 class="hero-title">Free Online PDF Tools</h1>
+            <p class="hero-subtitle">Simple, secure, and fast PDF tools for everyone</p>
+            
+            <div class="maintenance-notice">
+                <h3>🚧 Under Maintenance</h3>
+                <p>We're currently upgrading our PDF tools to provide you with a better experience.</p>
+                <p>All tools will be available soon. Thank you for your patience!</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="tools-section">
+        <div class="container">
+            <h2 class="section-title">Our PDF Tools</h2>
             <div class="tools-grid">
-                <a href="tools/compress.php" class="tool-card">
-                    <div class="tool-icon">
-                        <i class="fas fa-compress"></i>
-                    </div>
-                    <h3>Compress PDF</h3>
-                    <p>Reduce PDF file size while maintaining quality</p>
-                    <span class="tool-action">Compress Now <i class="fas fa-arrow-right"></i></span>
-                </a>
-
-                <a href="tools/merge.php" class="tool-card">
-                    <div class="tool-icon">
-                        <i class="fas fa-object-group"></i>
-                    </div>
+                
+                <div class="tool-card">
+                    <i class="fas fa-object-group tool-icon"></i>
                     <h3>Merge PDF</h3>
-                    <p>Combine multiple PDFs into a single document</p>
-                    <span class="tool-action">Merge Now <i class="fas fa-arrow-right"></i></span>
-                </a>
-
-                <a href="tools/rotate.php" class="tool-card">
-                    <div class="tool-icon">
-                        <i class="fas fa-sync-alt"></i>
-                    </div>
-                    <h3>Rotate PDF</h3>
-                    <p>Rotate pages clockwise or counter-clockwise</p>
-                    <span class="tool-action">Rotate Now <i class="fas fa-arrow-right"></i></span>
-                </a>
-
-                <a href="tools/jpg-to-pdf.php" class="tool-card">
-                    <div class="tool-icon">
-                        <i class="fas fa-image"></i>
-                    </div>
-                    <h3>JPG to PDF</h3>
-                    <p>Convert JPG images to PDF documents</p>
-                    <span class="tool-action">Convert Now <i class="fas fa-arrow-right"></i></span>
-                </a>
-
-                <a href="tools/pdf-to-jpg.php" class="tool-card">
-                    <div class="tool-icon">
-                        <i class="fas fa-file-image"></i>
-                    </div>
-                    <h3>PDF to JPG</h3>
-                    <p>Convert PDF pages to JPG images</p>
-                    <span class="tool-action">Convert Now <i class="fas fa-arrow-right"></i></span>
-                </a>
-
-                <a href="tools/unlock.php" class="tool-card">
-                    <div class="tool-icon">
-                        <i class="fas fa-unlock-alt"></i>
-                    </div>
-                    <h3>Unlock PDF</h3>
-                    <p>Remove restrictions from PDF files</p>
-                    <span class="tool-action">Unlock Now <i class="fas fa-arrow-right"></i></span>
-                </a>
-
-                <a href="tools/protect.php" class="tool-card">
-                    <div class="tool-icon">
-                        <i class="fas fa-lock"></i>
-                    </div>
-                    <h3>Protect PDF</h3>
-                    <p>Add password protection to your PDFs</p>
-                    <span class="tool-action">Protect Now <i class="fas fa-arrow-right"></i></span>
-                </a>
-
-                <a href="tools/split.php" class="tool-card">
-                    <div class="tool-icon">
-                        <i class="fas fa-cut"></i>
-                    </div>
+                    <p>Combine multiple PDF files into a single document</p>
+                </div>
+                
+                <div class="tool-card">
+                    <i class="fas fa-cut tool-icon"></i>
                     <h3>Split PDF</h3>
-                    <p>Split PDF files into multiple documents</p>
-                    <span class="tool-action">Split Now <i class="fas fa-arrow-right"></i></span>
-                </a>
+                    <p>Extract pages or split your PDF into multiple files</p>
+                </div>
+                
+                <div class="tool-card">
+                    <i class="fas fa-compress tool-icon"></i>
+                    <h3>Compress PDF</h3>
+                    <p>Reduce file size while maintaining quality</p>
+                </div>
+                
+                <div class="tool-card">
+                    <i class="fas fa-file-image tool-icon"></i>
+                    <h3>PDF to JPG</h3>
+                    <p>Convert PDF pages to high-quality JPG images</p>
+                </div>
+                
+                <div class="tool-card">
+                    <i class="fas fa-file-pdf tool-icon"></i>
+                    <h3>JPG to PDF</h3>
+                    <p>Convert images to PDF format</p>
+                </div>
+                
+                <div class="tool-card">
+                    <i class="fas fa-sync-alt tool-icon"></i>
+                    <h3>Rotate PDF</h3>
+                    <p>Rotate PDF pages to the correct orientation</p>
+                </div>
+                
+                <div class="tool-card">
+                    <i class="fas fa-lock tool-icon"></i>
+                    <h3>Protect PDF</h3>
+                    <p>Add password protection to your PDF files</p>
+                </div>
+                
+                <div class="tool-card">
+                    <i class="fas fa-unlock tool-icon"></i>
+                    <h3>Unlock PDF</h3>
+                    <p>Remove password and restrictions from PDFs</p>
+                </div>
+                
+                <div class="tool-card">
+                    <i class="fas fa-file-alt tool-icon"></i>
+                    <h3>Extract Text</h3>
+                    <p>Extract text content from PDF files</p>
+                </div>
+                
             </div>
         </div>
-    </section>
+    </div>
 
-    <section class="section" style="background: var(--surface);">
+    <div class="features-section">
         <div class="container">
-            <h2 class="text-center" style="margin-bottom: 3rem;">Why Choose Our PDF Tools?</h2>
+            <h2 class="section-title">Why Choose Triniva?</h2>
             <div class="features-grid">
-                <div class="feature">
-                    <i class="fas fa-shield-alt"></i>
-                    <h3>Secure Processing</h3>
-                    <p>Your files are automatically deleted after processing</p>
+                <div class="feature-card">
+                    <i class="fas fa-shield-alt feature-icon"></i>
+                    <h3>Secure & Private</h3>
+                    <p>Your files are automatically deleted after processing. We don't store or share your data.</p>
                 </div>
-                <div class="feature">
-                    <i class="fas fa-bolt"></i>
-                    <h3>Lightning Fast</h3>
-                    <p>Process PDFs in seconds with our optimized algorithms</p>
+                <div class="feature-card">
+                    <i class="fas fa-bolt feature-icon"></i>
+                    <h3>Fast Processing</h3>
+                    <p>Our tools are optimized for speed. Process your PDFs in seconds, not minutes.</p>
                 </div>
-                <div class="feature">
-                    <i class="fas fa-dollar-sign"></i>
-                    <h3>100% Free</h3>
-                    <p>All tools are completely free with no hidden charges</p>
+                <div class="feature-card">
+                    <i class="fas fa-globe feature-icon"></i>
+                    <h3>Works Everywhere</h3>
+                    <p>No software installation needed. Works on any device with a web browser.</p>
                 </div>
-                <div class="feature">
-                    <i class="fas fa-cloud"></i>
-                    <h3>No Registration</h3>
-                    <p>Use all tools without creating an account</p>
+                <div class="feature-card">
+                    <i class="fas fa-dollar-sign feature-icon"></i>
+                    <h3>Completely Free</h3>
+                    <p>All tools are 100% free to use. No hidden charges or subscriptions.</p>
                 </div>
             </div>
         </div>
-    </section>
+    </div>
+
+    <div class="cta-section">
+        <div class="container">
+            <h2>Ready When You Are</h2>
+            <p>Check back soon to use our powerful PDF tools!</p>
+        </div>
+    </div>
 
 <?php
-// Additional script for homepage
-$additional_scripts = <<<HTML
-    <script type="application/ld+json">
-    {
-        "@context": "https://schema.org",
-        "@type": "WebApplication",
-        "name": "Triniva",
-        "url": "https://www.triniva.com",
-        "description": "Free online PDF tools to compress, merge, rotate, convert JPG to PDF, PDF to JPG, unlock and protect PDFs",
-        "applicationCategory": "UtilitiesApplication",
-        "operatingSystem": "Any",
-        "offers": {
-            "@type": "Offer",
-            "price": "0",
-            "priceCurrency": "USD"
-        }
-    }
-    </script>
-HTML;
-
 // Include footer
 require_once 'includes/footer.php';
 ?>
