@@ -62,6 +62,9 @@ switch ($fileExtension) {
     case 'txt':
         $contentType = 'text/plain';
         break;
+    case 'rtf':
+        $contentType = 'application/rtf';
+        break;
 }
 
 // Set headers for download

@@ -224,20 +224,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         } else {
             // Multiple files - create ZIP
-            $zipFile = UPLOAD_DIR . uniqid('split_') . '.zip';
-            $zip = new ZipArchive();
-            
-            if ($zip->open($zipFile, ZipArchive::CREATE) === TRUE) {
-                foreach ($splitFiles as $file) {
-                    $zip->addFile($file, basename($file));
+            if (!class_exists('ZipArchive')) {
+                // If ZipArchive is not available, provide the first file only
+                $outputFile = UPLOAD_DIR . uniqid('split_') . '.pdf';
+                if (copy($splitFiles[0], $outputFile)) {
+                    $_SESSION['temp_files'][] = $outputFile;
+                    $downloadLink = 'download.php?file=' . urlencode(basename($outputFile));
+                    $success = true;
+                    $errors[] = 'Note: ZipArchive not available. Only the first split file is provided.';
                 }
-                $zip->close();
-                
-                $_SESSION['temp_files'][] = $zipFile;
-                $downloadLink = 'download.php?file=' . urlencode(basename($zipFile));
-                $success = true;
             } else {
-                throw new RuntimeException('Failed to create ZIP file.');
+                $zipFile = UPLOAD_DIR . uniqid('split_') . '.zip';
+                $zip = new ZipArchive();
+                
+                if ($zip->open($zipFile, ZipArchive::CREATE) === TRUE) {
+                    foreach ($splitFiles as $file) {
+                        $zip->addFile($file, basename($file));
+                    }
+                    $zip->close();
+                    
+                    $_SESSION['temp_files'][] = $zipFile;
+                    $downloadLink = 'download.php?file=' . urlencode(basename($zipFile));
+                    $success = true;
+                } else {
+                    throw new RuntimeException('Failed to create ZIP file.');
+                }
             }
         }
         
