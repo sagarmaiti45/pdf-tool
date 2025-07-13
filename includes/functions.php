@@ -7,11 +7,13 @@ define('MAX_FILE_SIZE', 50 * 1024 * 1024); // 50MB
 define('ALLOWED_EXTENSIONS', ['pdf', 'jpg', 'jpeg', 'png']);
 
 if (!file_exists(UPLOAD_DIR)) {
-    mkdir(UPLOAD_DIR, 0777, true);
+    mkdir(UPLOAD_DIR, 0755, true);
+    chmod(UPLOAD_DIR, 0755);
 }
 
 if (!file_exists(TEMP_DIR)) {
-    mkdir(TEMP_DIR, 0777, true);
+    mkdir(TEMP_DIR, 0755, true);
+    chmod(TEMP_DIR, 0755);
 }
 
 function generateUniqueFileName($extension) {
@@ -139,12 +141,18 @@ function logError($message, $context = []) {
     $logDir = dirname($logFile);
     
     if (!file_exists($logDir)) {
-        mkdir($logDir, 0777, true);
+        mkdir($logDir, 0755, true);
+        chmod($logDir, 0755);
     }
     
     $timestamp = date('Y-m-d H:i:s');
     $contextStr = !empty($context) ? json_encode($context) : '';
     $logMessage = "[$timestamp] $message $contextStr" . PHP_EOL;
+    
+    if (!file_exists($logFile)) {
+        touch($logFile);
+        chmod($logFile, 0644);
+    }
     
     file_put_contents($logFile, $logMessage, FILE_APPEND | LOCK_EX);
 }
